@@ -1,0 +1,29 @@
+name: 기능 작업
+description: 새 기능 또는 작업 단위
+title: "[FEAT] "
+labels: ["type: feature"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: 담당 영역
+      options: [프론트엔드, 백엔드·인프라, AI 파이프라인, 데이터·콘텐츠]
+    validations:
+      required: true
+  - type: textarea
+    id: goal
+    attributes:
+      label: 목표
+      description: 이 작업이 끝나면 무엇이 가능해지나요?
+    validations:
+      required: true
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 할 일
+      value: |
+        - [ ]
+  - type: textarea
+    id: done
+    attributes:
+      label: 완료 조건

@@ -1,0 +1,10 @@
+# type(scope): 요약 (50자 이내, 명령형, 마침표 없음)
+#
+# 본문: 무엇을, 왜 바꿨는지 (선택, 72자 줄바꿈)
+#
+# 꼬리말: Closes #이슈번호 (선택)
+#
+# type : feat fix docs style refactor test chore ci build perf content revert
+# scope: fe be infra ai data docs spec ci repo
+# 예) feat(ai): CLOVA OCR로 계약서 시급·근무시간 추출
+# 사용 설정: git config commit.template .gitmessage
