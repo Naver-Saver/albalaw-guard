@@ -13,14 +13,15 @@ class Settings(BaseSettings):
     environment: str = "local"  # local | dev | prod
     cors_origins: list[str] = ["http://localhost:5173"]
 
-    # DB (Cloud DB for MySQL)
-    database_url: str = "sqlite:///./local.db"
+    # DB는 사용하지 않는다 (docs/spec/04-data-model.md)
 
     # NCP 공통 (Object Storage 등)
     ncp_access_key: str = ""
     ncp_secret_key: str = ""
     object_storage_endpoint: str = "https://kr.object.ncloudstorage.com"
-    object_storage_bucket: str = ""
+    object_storage_bucket: str = "albalaw-uploads"
+    upload_prefix: str = "uploads/"
+    law_data_key: str = "law-data/manyask-worker.json"
 
     # CLOVA OCR
     clova_ocr_invoke_url: str = ""
