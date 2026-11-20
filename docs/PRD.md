@@ -78,8 +78,7 @@
 | CLOVA Voice | F1·F3 | 답변 음성 출력 (TTS) |
 | Papago Translation | F6 | 결과 번역 |
 | CLOVA Dubbing | F4 | 교육 영상 제작 (실시간 기능 아님) |
-| Object Storage | F1·F2 | 업로드 임시 저장, Speech 입력 |
-| Cloud DB for MySQL | F5 | 백문백답 캐시, 처리 이력(개인정보 제외) |
+| Object Storage | F1·F2·F5 | 업로드 임시 저장, Speech 입력, 백문백답 원문(JSON) 보관 |
 | Server · Container Registry | 공통 | Docker Compose 배포 |
 | API Gateway | 공통 | `[미정]` 외부 진입점 — 2주 범위에서는 Nginx 리버스 프록시로 대체 검토 |
 
@@ -94,8 +93,7 @@
    └─ backend : FastAPI
           ├─ CLOVA OCR / Speech / Studio / Chatbot
           ├─ Papago / CSR / Voice (AI·NAVER API)
-          ├─ Object Storage (S3 호환)
-          ├─ Cloud DB for MySQL
+          ├─ Object Storage (업로드 임시 + 법령 원문 JSON)
           └─ data.go.kr (백문백답·생활법령)
 
 GitHub Actions ─ CI: lint·test·build / CD: NCR push → SSH 배포
@@ -107,7 +105,7 @@ GitHub Actions ─ CI: lint·test·build / CD: NCR push → SSH 배포
 | --- | --- | --- |
 | 프론트엔드 | React 19 + TypeScript + Vite, oxlint | 모바일 우선 반응형, MediaRecorder로 마이크 입력 |
 | 백엔드 | Python 3.12, FastAPI, Pydantic Settings, httpx | AI 서비스 호출은 `services/` 단위로 분리 |
-| DB | Cloud DB for MySQL (로컬은 SQLite) | ORM `[미정]` SQLAlchemy 2.x 예정 |
+| 데이터 저장 | **DB 없음** — Object Storage(JSON) + 서버 메모리 | [04-data-model.md](spec/04-data-model.md) |
 | 스토리지 | NCP Object Storage (boto3, S3 호환) | |
 | 인프라 | NCP Server + Docker Compose, NCP Container Registry | `infra/ncloud/` CLI 스크립트 |
 | CI/CD | GitHub Actions | `.github/workflows/` |
@@ -119,7 +117,7 @@ GitHub Actions ─ CI: lint·test·build / CD: NCR push → SSH 배포
 
 ## 11. 데이터·개인정보 원칙
 
-- 계약서·명세서·녹음 **원본은 처리 후 즉시 삭제**, DB에는 이름·주소·계좌를 저장하지 않는다.
+- 계약서·명세서·녹음 **원본은 처리 후 즉시 삭제**, 이름·주소·계좌 등 사용자 데이터는 어디에도 저장하지 않는다.
 - 녹음 업로드 전 "대화 당사자 녹음 관련 주의" 안내와 동의 체크.
 - API 키는 `backend/.env`(git 미추적)와 GitHub Secrets에만 둔다. 프론트엔드에서 외부 API 직접 호출 금지.
 - 모든 AI 답변에 출처 표시 + "법률 자문 아님" 고지.
@@ -138,7 +136,7 @@ GitHub Actions ─ CI: lint·test·build / CD: NCR push → SSH 배포
 | 역할 | 담당 | 주요 산출물 | 커밋 scope |
 | --- | --- | --- | --- |
 | 프론트엔드 | `[이름]` | 화면, 업로드, 마이크 입력, 결과 표시 | `fe` |
-| 백엔드·인프라 | `[이름]` | FastAPI, Object Storage, DB, 배포·CI/CD | `be`, `infra`, `ci` |
+| 백엔드·인프라 | `[이름]` | FastAPI, Object Storage, 배포·CI/CD | `be`, `infra`, `ci` |
 | AI 파이프라인 | `[이름]` | OCR·Speech·Studio·Chatbot·Voice 연동, 프롬프트 | `ai` |
 | 데이터·콘텐츠 | `[이름]` | 공공 API 수집·캐싱, Chatbot FAQ, Dubbing 영상, 발표자료 | `data`, `docs` |
 
@@ -177,7 +175,6 @@ GitHub Actions ─ CI: lint·test·build / CD: NCR push → SSH 배포
 - [ ] API Gateway를 실제로 앞단에 둘지, Nginx로 대체할지
 - [ ] 녹음 최대 길이·파일 크기
 - [ ] 지원 언어 범위 (F6)
-- [ ] 백문백답 검색 방식: 키워드 매칭 vs Studio 임베딩
 
 ## 결정 기록
 
@@ -186,4 +183,5 @@ GitHub Actions ─ CI: lint·test·build / CD: NCR push → SSH 배포
 | 2026-11-20 | 주제 B안(알바생 노동권 지킴이) 확정 | — |
 | 2026-11-20 | 백엔드 FastAPI, 프론트 React(Vite), NCP Server + Docker Compose 배포 | AI 연동 코드가 짧고 2주 MVP에 유리 |
 | 2026-11-20 | 금액 계산은 백엔드 코드에서만 수행 | LLM 숫자 오류 방지 |
+| 2026-11-20 | DB(RDB·벡터 DB) 사용 안 함 — 법령 원문은 Object Storage JSON + 메모리 키워드 검색 | 근거 데이터 약 100건 규모, 임베딩 불필요, 사용자 데이터 비저장 |
 | 2026-11-20 | SDD(명세 우선) 방식으로 진행 — 요구사항 → 기능 명세 → API 명세 → 구현 | 4명 병렬 개발 시 프론트·백엔드·AI 간 계약 고정 |

@@ -62,7 +62,7 @@
 
 ## AI-06. Papago 번역 (FS-04)
 
-- `source=ko`, `target ∈ {en, vi, zh-CN}`, 문장 단위 호출 + `ai_cache` 캐싱
+- `source=ko`, `target ∈ {en, vi, zh-CN}`, 문장 단위 호출 + 메모리 캐시
 
 ## AI-07. CLOVA Voice (FS-01, FS-03)
 

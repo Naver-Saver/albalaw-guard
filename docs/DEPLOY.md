@@ -20,7 +20,7 @@ main push ──► CD: 이미지 빌드 → NCP Container Registry push → SSH
 
 **콘솔에서 남은 설정**
 - Object Storage → `albalaw-uploads` → Lifecycle Management: `uploads/` 1일 후 삭제 (S3 API로는 설정 불가)
-- CLOVA OCR / Speech / Chatbot 도메인, CLOVA Studio API 키, AI·NAVER API Application, Cloud DB for MySQL
+- CLOVA OCR / Speech / Chatbot 도메인, CLOVA Studio API 키, AI·NAVER API Application
 
 ## 2. GitHub Secrets 등록
 

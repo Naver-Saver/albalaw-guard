@@ -1,66 +1,64 @@
-# 04. 데이터 모델
+# 04. 데이터 저장 구조 (DB 없음)
 
-> 상태: 초안 v0.1 · DB: Cloud DB for MySQL 8 (로컬은 SQLite)
-> 원칙: **개인정보와 업로드 원본은 저장하지 않는다** (NFR-01). DB에는 공공 원문 캐시와 익명 처리 기록만 둔다.
+> 상태: 초안 v0.2 · **RDB·벡터 DB를 쓰지 않는다.**
+> 이유: 근거 데이터(백문백답 근로자 분야)가 약 100건 규모라 메모리에서 키워드 검색으로 충분하고, 임베딩 검색이 필요 없다. 사용자 데이터는 저장하지 않는다(NFR-01).
 
-## 저장하는 것 / 저장하지 않는 것
+## 데이터 흐름
 
-| 저장 O | 저장 X |
+```
+[문서 사진] ─► 백엔드 ─► Object Storage uploads/ (임시) ─► CLOVA OCR ─► 텍스트 ─► 코드 계산 ─► CLOVA Studio
+                                  └─ 처리 직후 삭제
+
+[법제처 백문백답 API] ─(수집 스크립트)─► Object Storage law-data/ (JSON 원문) ─► 서버 시작 시 메모리 로드
+                                                                       └─ 키워드 검색 상위 3건 ─► CLOVA Studio 프롬프트
+```
+
+## Object Storage 구성 (버킷 `albalaw-uploads`)
+
+| 경로 | 내용 | 보관 |
+| --- | --- | --- |
+| `uploads/{uuid}.{ext}` | 계약서·명세서 이미지, 녹음 파일 | 처리 직후 삭제 + 콘솔 수명주기 1일 |
+| `law-data/manyask-worker.json` | 백문백답 근로자 분야 원문 (수집 스크립트 결과) | 계속 보관, 수동 갱신 |
+| `law-data/raw/{날짜}/...xml` | (선택) API 원본 응답 백업 — 시연 중 API 장애 대비 | 계속 보관 |
+
+### `manyask-worker.json` 형식
+
+```json
+{
+  "fetched_at": "2026-11-21T10:00:00+09:00",
+  "source": "법제처_생활법령 백문백답 서비스_GW (data.go.kr 15159736)",
+  "items": [
+    { "id": "…", "title": "주휴수당은 누가 받을 수 있나요?", "answer": "…", "keywords": ["주휴수당", "주 15시간"], "url": "…" }
+  ]
+}
+```
+
+## 서버 메모리 (재시작 시 사라져도 되는 것)
+
+| 대상 | 구조 | 만료 |
+| --- | --- | --- |
+| 백문백답 인덱스 | 시작 시 `law-data/manyask-worker.json` 로드 → 리스트 + 키워드 역색인 | 서버 수명 |
+| AI 응답 캐시 (NFR-05) | `dict[sha256(서비스+입력)] → 결과`, 최대 500건 LRU | 1일 |
+| 녹음 작업 (`RecordingJob`) | `dict[job_id] → 상태·결과` | 조회 후 1시간 (BR-10) |
+
+> uvicorn **워커 1개**로 운영한다 (워커가 여러 개면 메모리 캐시·작업 상태가 워커마다 갈라짐).
+
+## 저장소(git)에 두는 정적 데이터
+
+| 파일 | 내용 |
 | --- | --- |
-| 백문백답 원문 캐시, Chatbot FAQ 목록, AI 응답 캐시(입력 해시 키), 익명 처리 통계 | 계약서·명세서 이미지, 녹음 파일, OCR 원문 전체, 이름·주소·계좌·전화번호, 녹음 대본 |
+| `backend/data/faq.csv` | CLOVA Chatbot에 등록한 FAQ 원본 (질문, 답변, 근거 문항 id) |
+| `backend/data/demo/*.json` | 시연 fallback 응답 (NFR-04) |
+| `backend/app/services/wage.py` | 연도별 최저임금 상수 |
 
-## 테이블
+## 저장하지 않는 것
 
-### `law_qa` — 백문백답 원문 캐시 (FS-06)
+계약서·명세서·녹음 원본(처리 후 삭제), OCR 원문 전체, 녹음 대본, 이름·주소·계좌·전화번호, 사용자 식별 정보.
 
-| 컬럼 | 타입 | 설명 |
+## 트레이드오프
+
+| 포기한 것 | 영향 | 대응 |
 | --- | --- | --- |
-| id | VARCHAR(64) PK | API 문항 식별자 |
-| category | VARCHAR(50) | 분야 (근로자) |
-| title | VARCHAR(500) | 질문 |
-| answer | TEXT | 답변 본문 |
-| keywords | VARCHAR(500) | 검색용 키워드 (쉼표 구분) |
-| source_url | VARCHAR(500) | 원문 링크 |
-| fetched_at | DATETIME | 수집 시각 |
-
-인덱스: `FULLTEXT(title, answer)` (MySQL ngram parser) `[미정]`, 로컬은 LIKE 검색.
-
-### `faq` — Chatbot 등록 FAQ 사본 (FS-03)
-
-| 컬럼 | 타입 | 설명 |
-| --- | --- | --- |
-| id | INT PK AUTO | |
-| question | VARCHAR(300) | 대표 질문 |
-| answer | TEXT | 답변 |
-| law_qa_id | VARCHAR(64) NULL FK→law_qa.id | 근거 문항 |
-
-Chatbot 빌더에 등록한 내용과 같은 원본을 `backend/data/faq.csv`로 관리하고, 이 테이블은 시드로 채운다.
-
-### `ai_cache` — AI 응답 캐시 (NFR-05)
-
-| 컬럼 | 타입 | 설명 |
-| --- | --- | --- |
-| key | CHAR(64) PK | SHA-256(서비스명 + 정규화 입력) |
-| service | VARCHAR(30) | studio / papago / voice … |
-| value | MEDIUMTEXT | 응답(JSON 또는 base64) |
-| created_at | DATETIME | |
-
-TTL: 7일 (배치 또는 조회 시 만료 처리).
-
-### `request_log` — 익명 처리 기록 (발표 지표용)
-
-| 컬럼 | 타입 | 설명 |
-| --- | --- | --- |
-| id | BIGINT PK AUTO | |
-| feature | VARCHAR(20) | ocr / review / recording / ask |
-| route | VARCHAR(10) NULL | faq / studio |
-| status | VARCHAR(10) | ok / fail |
-| latency_ms | INT | |
-| created_at | DATETIME | |
-
-입력 값·결과 내용은 기록하지 않는다.
-
-## 비영속 상태
-
-- 녹음 작업(`RecordingJob`)은 서버 메모리(dict)에 저장, 조회 후 1시간 만료 (BR-10). 서버 재시작 시 사라져도 된다.
-- Object Storage `uploads/` 프리픽스: 처리 직후 삭제 + 버킷 수명주기 1일 자동 삭제.
+| 처리 이력·통계 | 발표용 이용 지표 없음 | 필요하면 서버 로그(개수·지연시간만) 집계 |
+| 영속 캐시 | 재시작·배포 때 캐시 초기화 → AI 재호출 비용 | 시연 직전 배포 금지, 시연 질문 미리 1회 호출 |
+| 의미 기반 검색 | 키워드가 안 맞는 질문은 근거를 못 찾을 수 있음 | 문항별 키워드 수동 보강, 못 찾으면 상담 안내만 표시 |
