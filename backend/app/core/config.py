@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     app_name: str = "albalaw-guard"
     app_version: str = "0.1.0"
     environment: str = "local"  # local | dev | prod
+    log_level: str = "INFO"
     cors_origins: list[str] = ["http://localhost:5173"]
 
     # DB는 사용하지 않는다 (docs/spec/04-data-model.md)

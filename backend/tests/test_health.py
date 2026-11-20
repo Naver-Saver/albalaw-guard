@@ -8,4 +8,6 @@ client = TestClient(app)
 def test_health():
     res = client.get("/api/health")
     assert res.status_code == 200
-    assert res.json()["status"] == "ok"
+    body = res.json()
+    assert body["success"] is True
+    assert body["data"]["status"] == "ok"
