@@ -10,14 +10,16 @@
 | --- | --- | --- |
 | CLOVA OCR | 헤더 `X-OCR-SECRET` + 도메인별 Invoke URL | `CLOVA_OCR_INVOKE_URL`, `CLOVA_OCR_SECRET` |
 | CLOVA Speech | 헤더 `X-CLOVASPEECH-API-KEY` + 도메인별 Invoke URL | `CLOVA_SPEECH_INVOKE_URL`, `CLOVA_SPEECH_SECRET` |
-| CLOVA Studio | `Authorization: Bearer <API 키>` | `CLOVA_STUDIO_API_KEY` |
+| CLOVA Studio | `Authorization: Bearer <API 키(nv-…)>` + `X-NCP-CLOVASTUDIO-REQUEST-ID` | `CLOVA_STUDIO_API_KEY`, `CLOVA_STUDIO_REQUEST_ID`, `CLOVA_STUDIO_MODEL` |
 | CLOVA Chatbot | 헤더 `X-NCP-CHATBOT_SIGNATURE` (요청 본문 HMAC-SHA256, Secret Key) | `CLOVA_CHATBOT_INVOKE_URL`, `CLOVA_CHATBOT_SECRET` |
-| Papago / CSR / Voice | 헤더 `X-NCP-APIGW-API-KEY-ID`, `X-NCP-APIGW-API-KEY` (AI·NAVER API Application) | `NCP_APIGW_CLIENT_ID`, `NCP_APIGW_CLIENT_SECRET` |
+| CSR · CLOVA Voice | 헤더 `X-NCP-APIGW-API-KEY-ID`, `X-NCP-APIGW-API-KEY` — **AI·NAVER API > Application** (CSR·Voice 선택) | `AINAVER_CLIENT_ID`, `AINAVER_CLIENT_SECRET` |
+| Papago | 같은 헤더 이름이지만 **Papago Translation > Application** 에서 따로 발급 (AI·NAVER 키로 호출하면 401) | `PAPAGO_CLIENT_ID`, `PAPAGO_CLIENT_SECRET` |
 | Object Storage | S3 호환 (NCP Access/Secret Key) | `NCP_ACCESS_KEY`, `NCP_SECRET_KEY` |
 
 ## AI-01. CLOVA OCR (FS-01)
 
-- 요청: `POST {INVOKE_URL}/general` · `{"version":"V2","requestId":uuid,"timestamp":ms,"images":[{"format":"jpg","name":"doc","data":base64}]}`
+- 요청: `POST {INVOKE_URL}` (도메인 > API Gateway 연동의 APIGW Invoke URL) · `{"version":"V2","requestId":uuid,"timestamp":0,"lang":"ko","images":[{"format":"jpg","name":"doc","data":base64}]}`
+- 이미지는 **base64 `data`로 직접 전송**한다. 수업 실습의 `url` 방식은 이미지를 Object Storage에 **공개**로 올려야 해서 계약서(개인정보)에는 쓰지 않는다.
 - 사용 필드: `images[0].fields[].inferText`, `lineBreak` → 줄 단위 텍스트로 합침
 - 타임아웃 15초, 실패 시 502 + "글자를 읽지 못했어요"
 - `[미정]` 템플릿 OCR: 샘플 계약서 양식이 고정되면 템플릿 도메인으로 전환 검토
@@ -26,12 +28,14 @@
 
 - 요청: `POST {INVOKE_URL}/recognizer/object-storage` · `{"dataKey":"uploads/<file>","language":"ko-KR","completion":"async","diarization":{"enable":true}}`
 - 결과: 응답의 작업 토큰으로 상태 조회 → `segments[].start, speaker.label, text`
-- 사전 준비: Speech 도메인 생성 시 Object Storage 버킷 연결 (콘솔)
+- 사전 준비: 장문 인식 도메인 생성(Basic, 화자 인식 사용, 인식 대상·결과 경로 = 버킷 `albalaw-uploads`)
+- 수업은 빌더(콘솔)로만 실행했으므로, API 호출용 Invoke URL·Secret Key 위치는 도메인 생성 후 확인해 `[확인 필요]`
 - 폴링 간격 3초, 최대 5분
 
 ## AI-03. CLOVA Studio — 점검 결과 설명 (FS-01)
 
-- 요청: Chat Completions (`[미정]` 모델 HCX-005 / HCX-DASH 중 응답 속도 비교 후 결정), `temperature 0.3`, `maxTokens 600`
+- 요청: `POST https://clovastudio.stream.ntruss.com/testapp/v3/chat-completions/{CLOVA_STUDIO_MODEL}` (테스트 API 키는 `testapp` 경로), 모델 `HCX-005`, `temperature 0.3`, `maxTokens 600`
+- 대안: OpenAI 호환 `https://clovastudio.stream.ntruss.com/v1/openai` (`openai` 패키지, 4·5차시 실습과 동일)
 - 시스템 프롬프트 (초안):
 
 ```
@@ -55,18 +59,20 @@
 
 ## AI-05. 질문 라우팅 — CSR → Chatbot → Studio (FS-03)
 
-- CSR: `POST .../recog/v1/stt?lang=Kor`, `Content-Type: application/octet-stream`, 60초 이하
+- CSR: `POST https://naveropenapi.apigw.ntruss.com/recog/v1/stt?lang=Kor`, `Content-Type: application/octet-stream`, Body에 음성 바이너리, 60초 이하
 - Chatbot: `{"version":"v2","userId":<임시 세션 ID>,"timestamp":ms,"bubbles":[{"type":"text","data":{"description":질문}}],"event":"send"}`
   - FAQ 판정(BR-11): 기본(실패) 답변이 아니고 신뢰도 기준 통과
 - Studio(미매칭 시): AI-03과 같은 규칙, [계산 결과] 대신 [질문]
 
 ## AI-06. Papago 번역 (FS-04)
 
-- `source=ko`, `target ∈ {en, vi, zh-CN}`, 문장 단위 호출 + 메모리 캐시
+- `POST https://papago.apigw.ntruss.com/nmt/v1/translation` · JSON `{"source":"ko","target":…,"text":…}` → `message.result.translatedText`
+- `target ∈ {en, vi, zh-CN}`, 문장 단위 호출 + 메모리 캐시
 
 ## AI-07. CLOVA Voice (FS-01, FS-03)
 
-- 화자: 한국어 `[미정]` (리허설에서 선택), 출력 mp3, 1000자 초과 시 앞부분만
+- `POST https://naveropenapi.apigw.ntruss.com/tts-premium/v1/tts` · form `speaker=nara&speed=0&format=mp3&text=…`
+- 화자 기본 `nara` (리허설에서 변경 가능), 1회 최대 2,000자
 - 결과 캐싱(텍스트+화자 해시)
 
 ## 공통 실패 처리 (NFR-04)

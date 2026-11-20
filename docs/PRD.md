@@ -78,7 +78,7 @@
 | CLOVA Voice | F1·F3 | 답변 음성 출력 (TTS) |
 | Papago Translation | F6 | 결과 번역 |
 | CLOVA Dubbing | F4 | 교육 영상 제작 (실시간 기능 아님) |
-| Object Storage | F1·F2·F5 | 업로드 임시 저장, Speech 입력, 백문백답 원문(JSON) 보관 |
+| Object Storage | F2·F5 | 녹음 임시 저장(Speech 입력), 백문백답 원문(JSON) 보관 — 문서 이미지는 저장하지 않음 |
 | Server · Container Registry | 공통 | Docker Compose 배포 |
 | API Gateway | 공통 | `[미정]` 외부 진입점 — 2주 범위에서는 Nginx 리버스 프록시로 대체 검토 |
 
@@ -92,8 +92,9 @@
    ├─ frontend: Nginx (정적 파일 + /api 프록시)
    └─ backend : FastAPI
           ├─ CLOVA OCR / Speech / Studio / Chatbot
-          ├─ Papago / CSR / Voice (AI·NAVER API)
-          ├─ Object Storage (업로드 임시 + 법령 원문 JSON)
+          ├─ CSR / Voice (AI·NAVER API Application)
+          ├─ Papago (Papago Translation Application)
+          ├─ Object Storage (녹음 임시 + 법령 원문 JSON)
           └─ data.go.kr (백문백답·생활법령)
 
 GitHub Actions ─ CI: lint·test·build / CD: NCR push → SSH 배포
@@ -172,6 +173,7 @@ GitHub Actions ─ CI: lint·test·build / CD: NCR push → SSH 배포
 ## 17. 열린 질문
 
 - [ ] OCR: 일반 OCR vs 템플릿 OCR (샘플 비교 후 결정)
+- [ ] CLOVA Speech 장문 인식 API의 Invoke URL·Secret 발급 위치 (수업은 빌더로만 실행)
 - [ ] API Gateway를 실제로 앞단에 둘지, Nginx로 대체할지
 - [ ] 녹음 최대 길이·파일 크기
 - [ ] 지원 언어 범위 (F6)
@@ -184,4 +186,6 @@ GitHub Actions ─ CI: lint·test·build / CD: NCR push → SSH 배포
 | 2026-11-20 | 백엔드 FastAPI, 프론트 React(Vite), NCP Server + Docker Compose 배포 | AI 연동 코드가 짧고 2주 MVP에 유리 |
 | 2026-11-20 | 금액 계산은 백엔드 코드에서만 수행 | LLM 숫자 오류 방지 |
 | 2026-11-20 | DB(RDB·벡터 DB) 사용 안 함 — 법령 원문은 Object Storage JSON + 메모리 키워드 검색 | 근거 데이터 약 100건 규모, 임베딩 불필요, 사용자 데이터 비저장 |
+| 2026-11-20 | 키 체계를 수업 자료 기준으로 정정 — CSR·Voice(AI·NAVER API 앱)와 Papago(Papago Translation 앱) 키 분리, Studio Request ID 추가 | Papago는 별도 Application에서 발급 |
+| 2026-11-20 | 문서 이미지는 저장 없이 base64로 OCR 전송 | 수업의 url 방식은 이미지 공개가 필요해 개인정보에 부적합 |
 | 2026-11-20 | SDD(명세 우선) 방식으로 진행 — 요구사항 → 기능 명세 → API 명세 → 구현 | 4명 병렬 개발 시 프론트·백엔드·AI 간 계약 고정 |

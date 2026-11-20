@@ -6,8 +6,8 @@
 ## 데이터 흐름
 
 ```
-[문서 사진] ─► 백엔드 ─► Object Storage uploads/ (임시) ─► CLOVA OCR ─► 텍스트 ─► 코드 계산 ─► CLOVA Studio
-                                  └─ 처리 직후 삭제
+[문서 사진] ─► 백엔드(메모리) ─► CLOVA OCR(base64) ─► 텍스트 ─► 코드 계산 ─► CLOVA Studio   ※ 이미지 저장 안 함
+[녹음 파일] ─► 백엔드 ─► Object Storage uploads/ (임시) ─► CLOVA Speech ─► 처리 직후 삭제
 
 [법제처 백문백답 API] ─(수집 스크립트)─► Object Storage law-data/ (JSON 원문) ─► 서버 시작 시 메모리 로드
                                                                        └─ 키워드 검색 상위 3건 ─► CLOVA Studio 프롬프트
@@ -17,7 +17,7 @@
 
 | 경로 | 내용 | 보관 |
 | --- | --- | --- |
-| `uploads/{uuid}.{ext}` | 계약서·명세서 이미지, 녹음 파일 | 처리 직후 삭제 + 콘솔 수명주기 1일 |
+| `uploads/{uuid}.{ext}` | 녹음 파일 (CLOVA Speech 입력) | 처리 직후 삭제 + 콘솔 수명주기 1일 |
 | `law-data/manyask-worker.json` | 백문백답 근로자 분야 원문 (수집 스크립트 결과) | 계속 보관, 수동 갱신 |
 | `law-data/raw/{날짜}/...xml` | (선택) API 원본 응답 백업 — 시연 중 API 장애 대비 | 계속 보관 |
 
