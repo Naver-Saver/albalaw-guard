@@ -64,6 +64,8 @@ def test_ocr_endpoint_ok(settings, mock_transport):
     data = res.json()["data"]
     assert data["doc_type"] == "contract"
     assert "시급 10,000원" in data["raw_text"]
+    assert data["extracted"]["hourly_wage"]["value"] == 10_000
+    assert data["extracted"]["work_days"]["value"] == ["월", "화", "수", "목", "금"]
 
 
 def test_ocr_rejects_unsupported_type(settings):

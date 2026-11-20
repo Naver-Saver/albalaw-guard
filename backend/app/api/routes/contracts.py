@@ -4,8 +4,9 @@ from fastapi import APIRouter, File, Form, UploadFile
 
 from app.core.errors import FileTooLargeError, UnsupportedFileError
 from app.core.response import ApiResponse, ok
-from app.schemas.contracts import DocType, ExtractedFields, OcrResult
+from app.schemas.contracts import DocType, OcrResult
 from app.services import clova_ocr
+from app.services.extract import extract_fields
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -42,4 +43,4 @@ async def ocr_contract(
         text = await clova_ocr.recognize(content, fmt)
     finally:
         del content  # 원본은 메모리에서만 처리 (NFR-01)
-    return ok(OcrResult(doc_type=doc_type, raw_text=text.raw_text, extracted=ExtractedFields()))
+    return ok(OcrResult(doc_type=doc_type, raw_text=text.raw_text, extracted=extract_fields(text.lines)))
