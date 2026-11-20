@@ -1,0 +1,12 @@
+:root {
+  font-family: 'Pretendard', system-ui, -apple-system, sans-serif;
+  color: #1f2328;
+  background: #f6f8fa;
+}
+body { margin: 0; }
+main { max-width: 720px; margin: 0 auto; padding: 32px 20px; }
+.card { background: #fff; border: 1px solid #d0d7de; border-radius: 12px; padding: 16px 20px; margin-bottom: 12px; }
+.card h2 { margin: 0 0 4px; font-size: 1.05rem; }
+.card p { margin: 0; color: #57606a; }
+.status { font-size: 0.85rem; color: #57606a; }
+.notice { font-size: 0.8rem; color: #6e7781; margin-top: 24px; }
