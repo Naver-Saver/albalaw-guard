@@ -1,52 +1,41 @@
 #!/usr/bin/env bash
-# VPC · Subnet · ACG · 로그인 키 생성 (이미 있으면 재사용)
+# VPC·Public Subnet·ACG(22/80/443) 준비. 기존 VPC를 쓰려면 env.sh에 VPC_NO, SUBNET_NO를 지정.
 set -euo pipefail
-source "$(dirname "$0")/env.sh"
-J="--regionCode $NCP_REGION --output json"
-OUT="$(dirname "$0")/.state"; mkdir -p "$OUT"
+cd "$(dirname "$0")"; source ./env.sh
+N() { python3 ./ncp.py "$@"; }
+mkdir -p .state
 
-vpc_no=$(ncloud vpc getVpcList $J --vpcName "$PREFIX-vpc" | jq -r '.getVpcListResponse.vpcList[0].vpcNo // empty')
-if [ -z "$vpc_no" ]; then
-  vpc_no=$(ncloud vpc createVpc $J --vpcName "$PREFIX-vpc" --ipv4CidrBlock "$VPC_CIDR" | jq -r '.createVpcResponse.vpcList[0].vpcNo')
-  echo "VPC 생성: $vpc_no (RUN 상태가 될 때까지 대기)"
-  until [ "$(ncloud vpc getVpcDetail $J --vpcNo "$vpc_no" | jq -r '.getVpcDetailResponse.vpcList[0].vpcStatus.code')" = "RUN" ]; do sleep 5; done
+if [ -z "${VPC_NO:-}" ]; then
+  VPC_NO=$(N vpc createVpc regionCode=$NCP_REGION vpcName=$PREFIX-vpc ipv4CidrBlock=$VPC_CIDR | jq -r '.createVpcResponse.vpcList[0].vpcNo')
+  until [ "$(N vpc getVpcDetail regionCode=$NCP_REGION vpcNo=$VPC_NO | jq -r '.getVpcDetailResponse.vpcList[0].vpcStatus.code')" = RUN ]; do sleep 5; done
 fi
-echo "VPC: $vpc_no"; echo "$vpc_no" > "$OUT/vpc_no"
+echo "$VPC_NO" > .state/vpc_no
 
-acl_no=$(ncloud vpc getNetworkAclList $J --vpcNo "$vpc_no" | jq -r '.getNetworkAclListResponse.networkAclList[0].networkAclNo')
-
-subnet_no=$(ncloud vpc getSubnetList $J --vpcNo "$vpc_no" --subnetName "$PREFIX-public" | jq -r '.getSubnetListResponse.subnetList[0].subnetNo // empty')
-if [ -z "$subnet_no" ]; then
-  subnet_no=$(ncloud vpc createSubnet $J --vpcNo "$vpc_no" --subnetName "$PREFIX-public" --subnet "$SUBNET_CIDR" \
-    --zoneCode "$NCP_ZONE" --networkAclNo "$acl_no" --subnetTypeCode PUBLIC --usageTypeCode GEN \
-    | jq -r '.createSubnetResponse.subnetList[0].subnetNo')
-  echo "Subnet 생성: $subnet_no (대기)"
-  until [ "$(ncloud vpc getSubnetDetail $J --subnetNo "$subnet_no" | jq -r '.getSubnetDetailResponse.subnetList[0].subnetStatus.code')" = "RUN" ]; do sleep 5; done
+if [ -z "${SUBNET_NO:-}" ]; then
+  ACL=$(N vpc getNetworkAclList regionCode=$NCP_REGION vpcNo=$VPC_NO | jq -r '.getNetworkAclListResponse.networkAclList[0].networkAclNo')
+  SUBNET_NO=$(N vpc createSubnet regionCode=$NCP_REGION vpcNo=$VPC_NO subnetName=$PREFIX-public subnet=$SUBNET_CIDR \
+    zoneCode=$NCP_ZONE networkAclNo=$ACL subnetTypeCode=PUBLIC usageTypeCode=GEN | jq -r '.createSubnetResponse.subnetList[0].subnetNo')
+  until [ "$(N vpc getSubnetDetail regionCode=$NCP_REGION subnetNo=$SUBNET_NO | jq -r '.getSubnetDetailResponse.subnetList[0].subnetStatus.code')" = RUN ]; do sleep 5; done
 fi
-echo "Subnet: $subnet_no"; echo "$subnet_no" > "$OUT/subnet_no"
+echo "$SUBNET_NO" > .state/subnet_no
 
-acg_no=$(ncloud vserver getAccessControlGroupList $J --vpcNo "$vpc_no" --accessControlGroupName "$PREFIX-acg" | jq -r '.getAccessControlGroupListResponse.accessControlGroupList[0].accessControlGroupNo // empty')
-if [ -z "$acg_no" ]; then
-  acg_no=$(ncloud vserver createAccessControlGroup $J --vpcNo "$vpc_no" --accessControlGroupName "$PREFIX-acg" \
-    | jq -r '.createAccessControlGroupResponse.accessControlGroupList[0].accessControlGroupNo')
-  # 22: GitHub Actions 러너 IP가 고정이 아니라 전체 허용(키 인증만 사용), 80/443: 웹
-  for port in 22 80 443; do
-    ncloud vserver addAccessControlGroupInboundRule $J --vpcNo "$vpc_no" --accessControlGroupNo "$acg_no" \
-      --accessControlGroupRuleList "protocolTypeCode='TCP', ipBlock='0.0.0.0/0', portRange='$port'" >/dev/null
-  done
+ACG=$(N vserver getAccessControlGroupList regionCode=$NCP_REGION vpcNo=$VPC_NO accessControlGroupName=$PREFIX-acg | jq -r '.getAccessControlGroupListResponse.accessControlGroupList[0].accessControlGroupNo // empty')
+if [ -z "$ACG" ]; then
+  ACG=$(N vserver createAccessControlGroup regionCode=$NCP_REGION vpcNo=$VPC_NO accessControlGroupName=$PREFIX-acg | jq -r '.createAccessControlGroupResponse.accessControlGroupList[0].accessControlGroupNo')
+  sleep 5
+  # 22는 GitHub Actions 러너 IP가 고정이 아니라 전체 허용 (키 인증만 사용)
+  N vserver addAccessControlGroupInboundRule regionCode=$NCP_REGION vpcNo=$VPC_NO accessControlGroupNo=$ACG \
+    accessControlGroupRuleList.1.protocolTypeCode=TCP accessControlGroupRuleList.1.ipBlock=0.0.0.0/0 accessControlGroupRuleList.1.portRange=22 \
+    accessControlGroupRuleList.2.protocolTypeCode=TCP accessControlGroupRuleList.2.ipBlock=0.0.0.0/0 accessControlGroupRuleList.2.portRange=80 \
+    accessControlGroupRuleList.3.protocolTypeCode=TCP accessControlGroupRuleList.3.ipBlock=0.0.0.0/0 accessControlGroupRuleList.3.portRange=443 >/dev/null
+  # 새 ACG는 아웃바운드 규칙이 비어 있어 외부 통신(Docker 설치, 이미지 pull)이 막힌다 → 전체 허용
+  N vserver addAccessControlGroupOutboundRule regionCode=$NCP_REGION vpcNo=$VPC_NO accessControlGroupNo=$ACG \
+    accessControlGroupRuleList.1.protocolTypeCode=TCP accessControlGroupRuleList.1.ipBlock=0.0.0.0/0 accessControlGroupRuleList.1.portRange=1-65535 \
+    accessControlGroupRuleList.2.protocolTypeCode=UDP accessControlGroupRuleList.2.ipBlock=0.0.0.0/0 accessControlGroupRuleList.2.portRange=1-65535 \
+    accessControlGroupRuleList.3.protocolTypeCode=ICMP accessControlGroupRuleList.3.ipBlock=0.0.0.0/0 >/dev/null
 fi
-echo "ACG: $acg_no"; echo "$acg_no" > "$OUT/acg_no"
-
-if ! ncloud vserver getLoginKeyList $J --keyName "$LOGIN_KEY_NAME" | jq -e '.getLoginKeyListResponse.loginKeyList | length > 0' >/dev/null; then
-  ncloud vserver createLoginKey $J --keyName "$LOGIN_KEY_NAME" | jq -r '.createLoginKeyResponse.privateKey' > "$OUT/$LOGIN_KEY_NAME.pem"
-  chmod 600 "$OUT/$LOGIN_KEY_NAME.pem"
-  echo "로그인 키 저장: $OUT/$LOGIN_KEY_NAME.pem (분실 시 재발급 불가 — 안전한 곳에 보관)"
-fi
-
-echo
-echo "== 사용 가능한 서버 이미지 (Ubuntu) — SERVER_IMAGE_NO 후보 =="
-ncloud vserver getServerImageList $J | jq -r '.getServerImageListResponse.serverImageList[] | select(.serverImageName|test("ubuntu";"i")) | "\(.serverImageNo)\t\(.serverImageName)"' || true
-echo "== 서버 스펙 — SERVER_SPEC_CODE 후보 (2vCPU/4~8GB 권장) =="
-ncloud vserver getServerSpecList $J --zoneCode "$NCP_ZONE" | jq -r '.getServerSpecListResponse.serverSpecList[] | "\(.serverSpecCode)\t\(.cpuCount)vCPU\t\(.memorySize/1073741824)GB"' | head -20 || true
-echo
-echo "→ env.sh 에 SERVER_IMAGE_NO / SERVER_SPEC_CODE 를 채운 뒤 02-server.sh 실행"
+echo "$ACG" > .state/acg_no
+echo "VPC=$VPC_NO SUBNET=$SUBNET_NO ACG=$ACG"
+echo "== 서버 스펙 후보 (이미지 $SERVER_IMAGE_NO) =="
+N vserver getServerSpecList regionCode=$NCP_REGION zoneCode=$NCP_ZONE serverImageNo=$SERVER_IMAGE_NO \
+  | jq -r '.getServerSpecListResponse.serverSpecList[] | "\(.serverSpecCode)\t\(.serverSpecDescription)"' | head -8
