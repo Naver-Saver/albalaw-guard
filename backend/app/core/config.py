@@ -31,16 +31,23 @@ class Settings(BaseSettings):
     clova_speech_invoke_url: str = ""
     clova_speech_secret: str = ""
 
-    # CLOVA Studio
+    # CLOVA Studio (API 키 nv-…, Request ID는 플레이그라운드 > 코드 보기)
     clova_studio_api_key: str = ""
+    clova_studio_request_id: str = ""
+    clova_studio_model: str = "HCX-005"
+    clova_studio_base_url: str = "https://clovastudio.stream.ntruss.com/testapp/v3/chat-completions"
 
     # CLOVA Chatbot
     clova_chatbot_invoke_url: str = ""
     clova_chatbot_secret: str = ""
 
-    # NAVER Cloud AI·NAVER API (Papago, CSR, Voice) — API Gateway 키
-    ncp_apigw_client_id: str = ""
-    ncp_apigw_client_secret: str = ""
+    # AI·NAVER API > Application (CLOVA Speech Recognition, CLOVA Voice)
+    ainaver_client_id: str = ""
+    ainaver_client_secret: str = ""
+
+    # Papago Translation > Application (별도 앱 — AI·NAVER 키로는 401)
+    papago_client_id: str = ""
+    papago_client_secret: str = ""
 
     # 공공데이터포털 서비스키
     data_go_kr_service_key: str = ""
