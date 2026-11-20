@@ -1,0 +1,127 @@
+name: CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: cd-production
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ${{ secrets.NCR_REGISTRY }}   # 예: albalaw.kr.ncr.ntruss.com
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  preflight:
+    name: Check deploy secrets
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - id: check
+        env:
+          NCR_REGISTRY: ${{ secrets.NCR_REGISTRY }}
+          NCP_ACCESS_KEY: ${{ secrets.NCP_ACCESS_KEY }}
+          NCP_SECRET_KEY: ${{ secrets.NCP_SECRET_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          missing=()
+          for v in NCR_REGISTRY NCP_ACCESS_KEY NCP_SECRET_KEY SERVER_HOST SERVER_SSH_KEY; do
+            [ -z "${!v}" ] && missing+=("$v")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::배포 시크릿이 없어 CD를 건너뜁니다: ${missing[*]} (docs/DEPLOY.md 참고)"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build-push:
+    name: Build & push images (NCP Container Registry)
+    needs: preflight
+    if: needs.preflight.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: albalaw-backend
+            context: backend
+          - name: albalaw-frontend
+            context: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ secrets.NCP_ACCESS_KEY }}
+          password: ${{ secrets.NCP_SECRET_KEY }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ matrix.name }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY }}/${{ matrix.name }}:latest
+          cache-from: type=gha,scope=${{ matrix.context }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.context }}
+
+  deploy:
+    name: Deploy to NCP Server
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+      SERVER_USER: ${{ secrets.SERVER_USER || 'root' }}
+      APP_DIR: /opt/albalaw-guard
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        env:
+          SERVER_SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SERVER_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts
+
+      - name: Upload compose file & env
+        env:
+          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
+        run: |
+          SSH="ssh -i ~/.ssh/deploy_key $SERVER_USER@$SERVER_HOST"
+          $SSH "mkdir -p $APP_DIR"
+          scp -i ~/.ssh/deploy_key infra/docker-compose.prod.yml "$SERVER_USER@$SERVER_HOST:$APP_DIR/docker-compose.yml"
+          printf 'IMAGE_REGISTRY=%s\nIMAGE_TAG=%s\n' "$REGISTRY" "$IMAGE_TAG" | $SSH "cat > $APP_DIR/.env"
+          # BACKEND_ENV 시크릿이 있으면 덮어쓰고, 없으면 서버에 있는 backend.env를 그대로 사용
+          if [ -n "$BACKEND_ENV" ]; then
+            printf '%s\n' "$BACKEND_ENV" | $SSH "umask 077 && cat > $APP_DIR/backend.env"
+          fi
+          $SSH "test -f $APP_DIR/backend.env || touch $APP_DIR/backend.env"
+
+      - name: Pull & restart
+        env:
+          NCP_ACCESS_KEY: ${{ secrets.NCP_ACCESS_KEY }}
+          NCP_SECRET_KEY: ${{ secrets.NCP_SECRET_KEY }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "$SERVER_USER@$SERVER_HOST" bash -s <<SCRIPT
+          set -e
+          cd $APP_DIR
+          echo "$NCP_SECRET_KEY" | docker login "$REGISTRY" -u "$NCP_ACCESS_KEY" --password-stdin
+          docker compose pull
+          docker compose up -d --remove-orphans
+          docker image prune -f
+          SCRIPT
+
+      - name: Smoke test
+        run: |
+          for i in $(seq 1 10); do
+            if curl -fsS "http://$SERVER_HOST/api/health"; then exit 0; fi
+            sleep 6
+          done
+          echo "::error::헬스체크 실패" && exit 1

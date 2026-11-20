@@ -1,0 +1,23 @@
+name: PR Title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Conventional PR title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|test|chore|ci|build|perf|content|revert)\((fe|be|infra|ai|data|docs|spec|ci|repo)\): .{2,72}$'
+          if [[ "$TITLE" =~ $pattern ]]; then
+            echo "OK: $TITLE"
+          else
+            echo "::error::PR 제목이 컨벤션에 맞지 않습니다: '$TITLE'"
+            echo "형식: type(scope): 요약   예) feat(ai): CLOVA OCR 계약서 항목 추출"
+            echo "자세한 규칙은 docs/CONVENTIONS.md 참고"
+            exit 1
+          fi
