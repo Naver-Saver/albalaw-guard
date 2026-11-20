@@ -18,4 +18,4 @@ python3 ncp.py raw GET https://ncr.apigw.ntruss.com/ncr/api/v2/repositories
 
 - `env.sh`, `.state/`(배포 키 포함)는 git에 올라가지 않습니다.
 - Object Storage 수명주기(자동 삭제)는 S3 API가 막혀 있어 콘솔에서 설정합니다.
-- CLOVA OCR/Speech/Chatbot 도메인, CLOVA Studio, Cloud DB for MySQL은 콘솔에서 만듭니다.
+- CLOVA OCR/Speech/Chatbot 도메인, CLOVA Studio는 콘솔에서 만듭니다.

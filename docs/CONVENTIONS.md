@@ -58,7 +58,7 @@ type(scope): 요약
 | --- | --- |
 | `fe` | 프론트엔드 (`frontend/`) |
 | `be` | 백엔드 API (`backend/`) |
-| `infra` | 서버·스토리지·DB·Docker·NCP 스크립트 (`infra/`) |
+| `infra` | 서버·스토리지·Docker·NCP 스크립트 (`infra/`) |
 | `ai` | OCR·Speech·Studio·Chatbot·Voice·Papago 연동, 프롬프트 |
 | `data` | 공공 API 연동·캐싱, FAQ 데이터 |
 | `docs` | 문서 (PRD, README, 가이드) |

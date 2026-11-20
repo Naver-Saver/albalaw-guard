@@ -11,7 +11,7 @@
 | 1 | [요구사항 분석](01-requirements.md) | `FR-xx`, `NFR-xx` | 시스템이 **무엇을** 해야 하나 |
 | 2 | [기능 명세](02-functional-spec.md) | `FS-xx`, `BR-xx`, `AC-xx` | 각 기능이 **어떻게** 동작하나 (입력·출력·규칙·예외·완료 조건) |
 | 3 | [API 명세](03-api-spec.md) + [`openapi.yaml`](openapi.yaml) | `API-xx` | 프론트↔백엔드 **계약** |
-| 4 | [데이터 모델](04-data-model.md) | 테이블명 | 무엇을 저장하고 무엇을 저장하지 않나 |
+| 4 | [데이터 저장 구조](04-data-model.md) | 경로명 | 어디에 무엇을 두고 무엇을 저장하지 않나 (DB 없음) |
 | 5 | [AI 파이프라인 명세](05-ai-pipeline.md) | `AI-xx` | 외부 AI 서비스 입출력 계약, 프롬프트, 라우팅 |
 
 ```

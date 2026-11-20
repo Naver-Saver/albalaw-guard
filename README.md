@@ -8,7 +8,7 @@
 ## 문서
 
 - [PRD](docs/PRD.md) — 목표, 범위, 일정
-- [명세 (SDD)](docs/spec/README.md) — 요구사항 분석 · 기능 명세 · API 명세(`openapi.yaml`) · 데이터 모델 · AI 파이프라인
+- [명세 (SDD)](docs/spec/README.md) — 요구사항 분석 · 기능 명세 · API 명세(`openapi.yaml`) · 데이터 저장 구조 · AI 파이프라인
 - [협업 컨벤션](docs/CONVENTIONS.md) — 브랜치·커밋·PR 규칙
 - [배포 가이드](docs/DEPLOY.md) — NCP 인프라, CI/CD, 시크릿
 

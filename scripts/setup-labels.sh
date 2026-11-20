@@ -6,7 +6,7 @@ while IFS='|' read -r name color desc; do
   gh label create "$name" --repo "$REPO" --color "$color" --description "$desc" --force
 done <<'LABELS'
 area: frontend|1d76db|화면·업로드·마이크·결과 표시
-area: backend|0e8a16|서버·API·DB·배포
+area: backend|0e8a16|서버·API·스토리지·배포
 area: ai|8250df|OCR·Speech·Studio·Chatbot·Voice·Papago
 area: data|fbca04|공공 API·FAQ·Dubbing·발표자료
 type: feature|a2eeef|새 기능
