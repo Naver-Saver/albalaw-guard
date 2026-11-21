@@ -4,6 +4,12 @@ import { ButtonLink } from '../components/common/ButtonLink'
 
 type GuideVideo = { src: string; poster?: string; captions?: string }
 
+const contractVideo: GuideVideo = {
+  src: '/videos/contract-check.mp4',
+  poster: '/videos/contract-check-poster.jpg',
+  captions: '/videos/contract-check.ko.vtt',
+}
+
 const checklist = [
   { title: '시급·지급일·계산방법', text: '얼마를 받고, 언제 어떻게 받는지 확인하세요.' },
   { title: '근무요일·시간·휴게시간', text: '일하기로 한 요일과 시간, 쉬는 시간이 약속과 같은지 살펴보세요.' },
@@ -11,7 +17,7 @@ const checklist = [
   { title: '계약서, 나도 한 부', text: '작성한 계약서는 꼭 받아 보관하세요. 궁금한 점은 고용노동부 1350에 문의할 수 있어요.' },
 ]
 
-export function GuidePage({ video }: { video?: GuideVideo }) {
+export function GuidePage({ video = contractVideo }: { video?: GuideVideo }) {
   const [failedSource, setFailedSource] = useState<string | null>(null)
   const videoReady = video?.src && failedSource !== video.src
   return <div className="guide-page">
