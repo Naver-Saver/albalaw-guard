@@ -7,7 +7,7 @@
 
 ## 기초 스타일
 
-폰트는 `frontend/src/assets/fonts/NotoSansKR-VF.ttf`의 Noto Sans KR 가변 폰트이며, 라이선스는 같은 폴더의 `OFL.txt`에 있습니다.
+폰트는 `frontend/src/assets/fonts/NotoSansKR-VF.ttf`의 Noto Sans KR 가변 폰트입니다. 라이선스는 `frontend/public/fonts/OFL.txt`에 있으며, 빌드 시 `dist/fonts/OFL.txt`로 함께 배포됩니다.
 
 색상은 SVG의 기초 팔레트를 `frontend/src/styles/tokens.css`에서 관리합니다.
 

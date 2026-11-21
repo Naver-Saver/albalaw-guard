@@ -22,7 +22,7 @@ npm.cmd run build
 npm.cmd run preview
 ```
 
-`build`는 TypeScript 검사 후 `dist/`에 배포 파일을 생성합니다. `preview`는 정적 빌드 확인용이며, 개발 서버의 `/api` 프록시가 적용되지 않습니다. API를 포함한 통합 확인은 저장소 루트의 `docker compose up --build`를 사용합니다.
+`build`는 TypeScript 검사 후 `dist/`에 배포 파일을 생성합니다. 현재 Vite 설정에서는 `preview`도 `/api` 프록시를 사용하므로 API 확인 시 백엔드를 함께 실행합니다. Docker·Nginx를 포함한 통합 확인은 저장소 루트의 `docker compose up --build`를 사용합니다.
 
 ## 현재 파일과 기준
 
@@ -34,7 +34,8 @@ npm.cmd run preview
 | `src/styles/tokens.css` | 공통 색상·폰트·모서리 변수 |
 | `src/styles/global.css` | 로컬 폰트와 기본 스타일 |
 | `src/index.css` | 기존 시작 화면 스타일 |
-| `src/assets/fonts/` | Noto Sans KR 가변 폰트·라이선스 |
+| `src/assets/fonts/` | Noto Sans KR 가변 폰트 |
+| `public/fonts/OFL.txt` | 배포 파일에도 포함되는 폰트 라이선스 |
 | `../docs/design/` | 원본 와이어프레임과 해석 기준 |
 | `../docs/spec/openapi.yaml` | 백엔드 요청·응답 명세 |
 

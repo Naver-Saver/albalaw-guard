@@ -28,7 +28,7 @@
 
 ## Task 1: Prepare the frontend workspace
 
-**Files:** `frontend/README.md`, `frontend/package.json`, `frontend/package-lock.json`, `frontend/src/styles/*`, `frontend/src/assets/fonts/*`, `frontend/src/main.tsx`, `frontend/src/index.css`, `docs/design/*`.
+**Files:** `frontend/README.md`, `frontend/package.json`, `frontend/package-lock.json`, `frontend/src/styles/*`, `frontend/src/assets/fonts/*`, `frontend/public/fonts/OFL.txt`, `frontend/src/main.tsx`, `frontend/src/index.css`, `docs/design/*`.
 
 **Interfaces:** Preserve `fetchHealth()` and `/api` requests; expose CSS custom properties for subsequent UI work.
 
@@ -38,10 +38,20 @@
 - [x] Connect global font and color variables while preserving the starter's layout and behavior.
 - [x] Add frontend setup and design-reference documentation.
 - [x] Run lint, TypeScript production build, asset hash checks and `git diff --check`.
-- [ ] Review the scoped change, commit and push the preparation branch.
+- [x] Review the scoped change and commit the preparation work. Push follows the final verification; its result is reported in the handoff.
 
 ## Decisions
 
 - A fresh checkout inside the writable workspace avoids overwriting the original non-Git starter and needs no extra worktree.
 - Retain the existing team dependencies and lockfile versions.
 - Preserve the supplied TTF; webfont compression/subsetting belongs to a later optimization if needed.
+
+## Verification and Review
+
+- Baseline and updated frontend: `npm run lint` and `npm run build` passed.
+- The copied SVG and TTF have the same SHA-256 hashes as the supplied originals.
+- The development server served the document, global stylesheet and font with HTTP 200.
+- Read-only review found the license missing from production output. A build-output check reproduced the omission; the license is now under `public/fonts/` for Vite to copy into `dist/fonts/`.
+- The preview proxy documentation was corrected after checking the installed Vite implementation.
+- Live backend availability was outside this setup task; its health client and proxy configuration are unchanged.
+- GitHub issue creation was denied by the connected integration (403), so this preparation branch has no issue number.
