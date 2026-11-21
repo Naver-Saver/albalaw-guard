@@ -2,10 +2,10 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, Form, UploadFile
 
-from app.core.errors import FileTooLargeError, UnsupportedFileError
+from app.core.errors import BadRequestError, FileTooLargeError, UnsupportedFileError
 from app.core.response import ApiResponse, ok
-from app.schemas.contracts import DocType, OcrResult
-from app.services import clova_ocr
+from app.schemas.contracts import DocType, OcrResult, ReviewRequest, ReviewResult
+from app.services import clova_ocr, review
 from app.services.extract import extract_fields
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
@@ -44,3 +44,12 @@ async def ocr_contract(
     finally:
         del content  # 원본은 메모리에서만 처리 (NFR-01)
     return ok(OcrResult(doc_type=doc_type, raw_text=text.raw_text, extracted=extract_fields(text.lines)))
+
+
+@router.post("/review", response_model=ApiResponse[ReviewResult])
+async def review_contract(req: ReviewRequest) -> ApiResponse[ReviewResult]:
+    try:
+        result = await review.review(req)
+    except ValueError as e:  # 데이터 없는 연도 등 (BR-03)
+        raise BadRequestError(str(e)) from e
+    return ok(result)
