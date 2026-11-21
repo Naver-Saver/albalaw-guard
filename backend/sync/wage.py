@@ -12,7 +12,8 @@ import argparse
 import csv
 from pathlib import Path
 
-from sync.common import BACKEND_DIR, DRY_RUN_DIR, now_kst_iso, write_json
+from app.services.storage import StorageKeys
+from sync.common import BACKEND_DIR, DRY_RUN_DIR, now_kst_iso, upload_json, write_json
 
 DEFAULT_CSV = BACKEND_DIR / "samples" / "raw" / "wage" / "min_wage_20260101.csv"
 ANNOUNCED_CSV = BACKEND_DIR / "samples" / "raw" / "wage" / "announced.csv"
@@ -80,12 +81,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.announced_csv and args.announced_csv.exists():
         items = merge_announced(items, parse_min_wage_csv(args.announced_csv))
     payload = build_payload(items)
-    if not args.dry_run:
-        # TODO: Object Storage 업로드 — C의 clients/storage.py 구현 후 연결
-        raise SystemExit("업로드는 아직 연결되지 않았습니다. --dry-run 으로 실행하세요.")
-    out = DRY_RUN_DIR / OUTPUT_NAME
-    write_json(out, payload)
-    print(f"{len(payload['items'])}건 저장: {out}")
+    if args.dry_run:
+        out = DRY_RUN_DIR / OUTPUT_NAME
+        write_json(out, payload)
+        print(f"{len(payload['items'])}건 저장: {out}")
+        return 0
+
+    key = upload_json(StorageKeys.LAW_MIN_WAGE, payload)
+    print(f"{len(payload['items'])}건 업로드: {key}")
     return 0
 
 

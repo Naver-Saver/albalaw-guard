@@ -4,9 +4,18 @@ from pathlib import Path
 import pytest
 
 from app.core.config import get_settings
-from app.services import http
+from app.services import http, storage
+from app.services.storage import InMemoryObjectStorage
 
 FIXTURE_DIR = Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture(autouse=True)
+def isolate_storage():
+    """모든 테스트가 실제 .env의 NCP Object Storage를 호출하지 않도록 인메모리로 격리한다."""
+    storage.set_storage(InMemoryObjectStorage())
+    yield
+    storage.set_storage(None)
 
 
 @pytest.fixture

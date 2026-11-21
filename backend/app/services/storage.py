@@ -25,15 +25,22 @@ class StorageKeys:
     """Object Storage 버킷 내 객체 키 규칙."""
 
     LAW_DATA_DEFAULT = "law-data/manyask-worker.json"
-    LAW_QNA = "law/qna_labor.json"
-    LAW_RULES = "law/lifelaw_rules.json"
-    LAW_FAQ = "law/lifelaw_faq.json"
-    WAGE_MIN = "wage/min_wage.json"
+    LAW_DATA_PREFIX = "law-data/"
+    LAW_ARTICLES = "law-data/law-articles.json"
+    LAW_QNA_MANUAL = "law-data/qna-manual.json"
+    LAW_MIN_WAGE = "law-data/min-wage.json"
     META_SYNC_LOG = "meta/sync_log.json"
 
     @staticmethod
     def _clean_ext(ext: str) -> str:
         return ext.lstrip(".").strip().lower()
+
+    @classmethod
+    def law_data(cls, filename: str) -> str:
+        clean = filename.lstrip("/")
+        if clean.startswith(cls.LAW_DATA_PREFIX):
+            return clean
+        return f"{cls.LAW_DATA_PREFIX}{clean}"
 
     @classmethod
     def upload_recording(cls, job_id: str, ext: str, prefix: str = "uploads/") -> str:
@@ -268,6 +275,12 @@ def set_storage(storage: ObjectStorage | None) -> None:
     global _storage_instance
     with _storage_lock:
         _storage_instance = storage
+
+
+def get_configured_storage() -> ObjectStorage | None:
+    """현재 주입·생성된 ObjectStorage 인스턴스를 반환한다 (미초기화 시 None)."""
+    with _storage_lock:
+        return _storage_instance
 
 
 def get_storage() -> ObjectStorage:
