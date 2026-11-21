@@ -27,7 +27,7 @@ EVIDENCE = [
 
 @pytest.fixture
 def index(monkeypatch):
-    monkeypatch.setattr(review, "search_evidence", lambda keywords, limit=3: list(EVIDENCE))
+    monkeypatch.setattr(review, "find_evidence", lambda topics: list(EVIDENCE))
 
 
 def _post(**body):
@@ -97,3 +97,52 @@ def test_review_uses_real_evidence_data(monkeypatch):
     monkeypatch.setattr("app.services.clova_studio.is_configured", lambda: False)
     d = _post(hourly_wage=10_000, weekly_hours=20).json()["data"]
     assert d["sources"] and all(s["id"] and s["title"] for s in d["sources"])
+
+
+def test_evidence_covers_each_check_topic():
+    """주휴수당 대상 + 최저임금 미달이면 두 주제의 근거가 모두 들어가야 한다 (#37)."""
+    from app.services.wage import check_wage
+
+    req = review.ReviewRequest(hourly_wage=10_000, weekly_hours=17.5, year=2026)
+    items, topics = review.build_items(req, check_wage(10_000, 17.5, 2026))
+    assert topics[:2] == ["min_wage", "weekly_holiday"]
+    found = review.find_evidence(topics)
+    text = " ".join(f"{e['title']} {e['text']}" for e in found)
+    assert "최저임금" in text and "주휴" in text
+    assert any(e["source"] == "LAW_API" for e in found)  # 연결 조문 포함
+    assert len({e["id"] for e in found}) == len(found)
+
+
+def test_check_topics_come_first():
+    from app.services.wage import check_wage
+
+    req = review.ReviewRequest(
+        hourly_wage=10_320,
+        weekly_hours=40,
+        work_days=["월", "화", "수", "목", "금"],
+        break_minutes=30,
+        year=2026,
+    )
+    _, topics = review.build_items(req, check_wage(10_320, 40, 2026))
+    # 최저임금은 충족(ok)이라 뒤로, 주휴·휴게(check)가 앞
+    assert topics == ["weekly_holiday", "break_time", "min_wage"]
+
+
+def test_prompt_lists_check_items():
+    from app.services.wage import check_wage
+
+    c = check_wage(10_000, 17.5, 2026)
+    req = review.ReviewRequest(hourly_wage=10_000, weekly_hours=17.5, year=2026)
+    items, _ = review.build_items(req, c)
+    prompt = review.build_user_prompt(c, items, list(EVIDENCE))
+    assert "[확인 항목]" in prompt and "[확인 필요] 주휴수당 대상이에요" in prompt
+    assert "(MANUAL-1)" in prompt
+
+
+def test_number_guard_keeps_statute_references():
+    from app.services.number_guard import filter_unverified_sentences
+
+    kept, removed = filter_unverified_sentences("근로기준법 제55조에 따라 유급휴일을 줘야 해요.", {10_320.0})
+    assert removed == [] and "제55조" in kept
+    _, removed = filter_unverified_sentences("매달 77,777원을 더 받아요.", {10_320.0})
+    assert removed
