@@ -27,3 +27,9 @@
 .recordings-transcript summary { cursor:pointer; font-weight:600; }
 @media(max-width:900px) { .recordings-layout { grid-template-columns:1fr; } }
 @media(max-width:700px) { .recordings-heading { flex-direction:column; } .recordings-actions .button { width:100%; } }
+.recordings-advice { background:#fffaf0; border:1px solid #ead9af; border-radius:8px; padding:10px 12px; color:#805817; font-size:.8125rem; }
+.recordings-source { margin-top:8px; font-size:.8125rem; display:grid; gap:4px; }
+.recordings-source > span { font-weight:600; }
+.recordings-evidence { border-top:1px solid var(--color-border); padding-top:16px; margin-top:16px; }
+.recordings-evidence h3 { font-size:.9375rem; margin:0 0 8px; }
+.recordings-evidence ul { margin:0 0 12px; padding-left:20px; font-size:.875rem; line-height:1.8; }
