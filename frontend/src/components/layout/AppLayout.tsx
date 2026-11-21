@@ -5,7 +5,7 @@ import { workspaceNavigation } from './navigation'
 import type { WorkspaceSection } from './navigation'
 import './layout.css'
 
-export function AppLayout({ section, onNavigate, children, documentName }: { section: WorkspaceSection; onNavigate: (section: WorkspaceSection) => void; children: ReactNode; documentName?: string | null }) {
+export function AppLayout({ section, onNavigate, children, documentName, hasReview = true, hasRequest = true, onNewDocument }: { section: WorkspaceSection; onNavigate: (section: WorkspaceSection) => void; children: ReactNode; documentName?: string | null; hasReview?: boolean; hasRequest?: boolean; onNewDocument?: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLButtonElement>(null)
   const mainRef = useRef<HTMLElement>(null)
@@ -24,8 +24,14 @@ export function AppLayout({ section, onNavigate, children, documentName }: { sec
     <div className="app-body">
       <aside id="workspace-sidebar" className={`sidebar ${menuOpen ? 'sidebar--open' : ''}`}>
         <div className="sidebar__label">WORKSPACE</div>
-        <nav aria-label="작업 메뉴">{workspaceNavigation.map(item => <button key={item.id} className="nav-item" type="button" aria-current={item.id === section ? 'page' : undefined} onClick={() => { onNavigate(item.id); setMenuOpen(false); mainRef.current?.focus() }}><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav>
+        <nav aria-label="작업 메뉴">{workspaceNavigation.map(item => {
+          const documentStep = item.id === 'edit' || item.id === 'results'
+          const disabled = documentStep && !hasReview
+          const hint = disabled ? '문서 추출 후 이용' : item.id === 'results' && !hasRequest ? '입력 확인 후 점검할 수 있어요' : null
+          return <button key={item.id} className="nav-item" type="button" disabled={disabled} aria-current={item.id === section ? 'page' : undefined} onClick={() => { onNavigate(item.id); setMenuOpen(false); mainRef.current?.focus() }}><Icon name={item.icon} /><span>{item.label}{hint && <small className="nav-item__hint">{hint}</small>}</span></button>
+        })}</nav>
         <div className="sidebar__document"><span className="sidebar__label">진행 중인 문서</span><div className="sidebar__document-icon"><Icon name="file" /></div><strong className="sidebar__filename">{documentName || '문서를 올려주세요'}</strong><p>{documentName ? '기기에서만 미리보기 중' : '새 문서를 기다리고 있어요'}</p></div>
+        {onNewDocument && documentName && <button type="button" className="button button--secondary" onClick={() => { onNewDocument(); setMenuOpen(false); mainRef.current?.focus() }}>새 문서 시작</button>}
         <a className="sidebar__guide" href="#/guide"><Icon name="info" /><span><strong>서명 전, 계약서 체크</strong><small>계약서 작성 전 확인사항을 알아보세요.</small></span></a>
         <div className="sidebar__privacy"><Icon name="shield" /><p>내 문서는 안전하게<br /><strong>처리 후 원본을 보관하지 않아요.</strong></p></div>
         <p className="sidebar__footer">Saver · 함께 지키는 일의 권리</p>
