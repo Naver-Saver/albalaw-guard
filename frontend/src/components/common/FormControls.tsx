@@ -1,5 +1,5 @@
 import { useId } from 'react'
-import type { ComponentPropsWithRef, InputHTMLAttributes, SelectHTMLAttributes, ReactNode } from 'react'
+import type { ComponentPropsWithRef, SelectHTMLAttributes, ReactNode } from 'react'
 import { Icon } from './Icon'
 
 type FieldContent = { label: string; hint?: string; error?: string }
@@ -28,7 +28,7 @@ export function SelectField({ label, hint, error, id, children, ...props }: Sele
   </div>
 }
 
-export function Checkbox({ label, id, className = '', ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & { label: ReactNode }) {
+export function Checkbox({ label, id, className = '', ...props }: Omit<ComponentPropsWithRef<'input'>, 'type'> & { label: ReactNode }) {
   const generatedId = useId()
   const fieldId = id ?? generatedId
   return <label className={`checkbox ${className}`} htmlFor={fieldId}><input {...props} type="checkbox" id={fieldId} /><span>{label}</span></label>
