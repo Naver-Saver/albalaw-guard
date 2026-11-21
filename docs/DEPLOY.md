@@ -49,7 +49,17 @@ gh secret set BACKEND_ENV -R Naver-Saver/albalaw-guard < backend/.env.prod   # �
 - Actions → CD 실행 결과의 **Smoke test** 단계 통과
 - 브라우저에서 http://101.79.9.131 접속
 
-## 4. 수동 롤백
+## 4. CD 없이 수동 배포
+
+GitHub Secrets가 아직 없거나 Actions를 쓸 수 없을 때, 서버에서 직접 빌드해 같은 구성으로 띄운다.
+
+```bash
+scripts/deploy-on-server.sh 101.79.9.131 ../.deploy/albalaw_deploy main   # 브랜치·태그 지정 가능
+```
+
+이미지 이름·경로가 CD와 같아서, 이후 CD 배포가 그대로 덮어쓴다.
+
+## 5. 수동 롤백
 
 ```bash
 ssh root@<공인IP>
@@ -58,7 +68,7 @@ sed -i 's/^IMAGE_TAG=.*/IMAGE_TAG=<이전 커밋 SHA>/' .env
 docker compose pull && docker compose up -d
 ```
 
-## 5. 비용 주의
+## 6. 비용 주의
 
 - 시연이 끝나면 서버 **반납** 또는 정지, CLOVA Dubbing 프로젝트 그룹 삭제.
 - 콘솔 → Billing → 예산 알림 설정.
