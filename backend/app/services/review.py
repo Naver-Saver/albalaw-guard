@@ -13,7 +13,7 @@ from app.schemas.contracts import CheckItem, ReviewRequest, ReviewResult, Source
 from app.schemas.wage import WageCheckResponse
 from app.services import clova_studio
 from app.services.clova_studio import Message
-from app.services.law_qa import LawQa, get_index
+from app.services.law_search import build_evidence_block, search_evidence
 from app.services.number_guard import filter_unverified_sentences
 from app.services.wage import WageCheckResult, check_wage
 
@@ -110,12 +110,12 @@ def _allowed_numbers(req: ReviewRequest, c: WageCheckResult) -> set[float]:
     return values
 
 
-async def explain(req: ReviewRequest, c: WageCheckResult, sources: list[LawQa]) -> str | None:
-    """근거 문항이 있을 때만 Studio 설명을 만든다. 실패하면 None (FS-01 예외 표)."""
+async def explain(req: ReviewRequest, c: WageCheckResult, sources: list[dict]) -> str | None:
+    """근거가 있을 때만 Studio 설명을 만든다. 실패하면 None (FS-01 예외 표)."""
     if not sources or not clova_studio.is_configured():
         return None
     calc = {k: v for k, v in asdict(c).items() if k != "notice"}
-    context = "\n\n".join(f"[{qa.title}]\n{qa.answer[:CONTEXT_CHARS]}" for qa in sources)
+    context = build_evidence_block(sources, max_total_chars=CONTEXT_CHARS * len(sources))
     user = f"[계산 결과]\n{json.dumps(calc, ensure_ascii=False)}\n\n[근거 원문]\n{context}"
     try:
         text = await clova_studio.chat(
@@ -133,15 +133,17 @@ async def explain(req: ReviewRequest, c: WageCheckResult, sources: list[LawQa]) 
 async def review(req: ReviewRequest) -> ReviewResult:
     c = check_wage(req.hourly_wage, req.weekly_hours, req.year)
     items, keywords = build_items(req, c)
-    found = get_index().search(keywords, limit=3)
+    found = search_evidence(keywords, limit=3)
     explanation = await explain(req, c, found)
     return ReviewResult(
         calculation=WageCheckResponse(**asdict(c)),
         items=items,
         explanation=explanation,
         sources=[
-            Source(id=qa.id, title=qa.title, snippet=qa.answer[:SNIPPET_CHARS] or None, url=qa.url)
-            for qa in found
+            Source(
+                id=s["id"], title=s["title"], snippet=s["text"][:SNIPPET_CHARS] or None, url=s["sourceUrl"]
+            )
+            for s in found
         ],
         disclaimer=DISCLAIMER,
     )

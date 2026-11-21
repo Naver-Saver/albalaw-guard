@@ -1,0 +1,42 @@
+.button { min-height: 46px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 20px; border: 1px solid transparent; border-radius: var(--radius-control); font-weight: 600; font-size: .875rem; line-height: 1.5; cursor: pointer; transition: background .15s, border-color .15s; }
+.button--primary { background: var(--color-primary); color: var(--color-text); }
+.button--primary:hover:not(:disabled) { background: #02b650; }
+.button--secondary { background: var(--color-surface); color: var(--color-text); border-color: #bbcfc2; }
+.button--secondary:hover:not(:disabled) { background: var(--color-background); border-color: var(--color-primary-text); }
+.button--ghost { background: transparent; color: var(--color-primary-text); }
+.button--ghost:hover:not(:disabled) { background: var(--color-selected); }
+.button:disabled { background: #edf1ee; color: #64766b; border-color: var(--color-border); cursor: not-allowed; }
+.button[aria-busy=true] { color: var(--color-primary-text); background: var(--color-selected); }
+:where(button, a, input, select, textarea):focus-visible { outline: 3px solid var(--color-primary-text); outline-offset: 3px; }
+.field { display: grid; gap: 8px; min-width: 0; }
+.field > label { font-size: .875rem; font-weight: 600; }
+.field__required { color: var(--color-secondary-text); font-weight: 400; }
+.control { width: 100%; min-height: 48px; padding: 11px 14px; color: var(--color-text); background: var(--color-surface); border: 1px solid #bbcfc2; border-radius: var(--radius-control); font-size: 1rem; }
+.control::placeholder { color: var(--color-secondary-text); }
+.control:disabled { background: var(--color-background); cursor: not-allowed; }
+.control[aria-invalid=true] { border-color: var(--color-danger); }
+.field__hint { font-size: .875rem; color: var(--color-secondary-text); margin: 0; }
+.field__hint--error { color: var(--color-danger); }
+.select-wrap { position: relative; }
+.select-wrap select { appearance: none; padding-right: 42px; }
+.select-wrap svg { pointer-events: none; position: absolute; top: 14px; right: 14px; }
+.checkbox { display: flex; align-items: flex-start; gap: 10px; font-size: .875rem; line-height: 1.7; cursor: pointer; min-height: 44px; padding: 10px 0; }
+.checkbox input { width: 19px; height: 19px; margin: 3px 0 0; flex-shrink: 0; accent-color: var(--color-primary-text); }
+.checkbox:has(input:disabled) { color: var(--color-secondary-text); cursor: not-allowed; }
+.card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-card); padding: 28px; min-width: 0; }
+.card__header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 24px; }
+.card__header h2 { margin: 0; font-size: 1.125rem; letter-spacing: -.03em; }
+.card__header p { margin: 7px 0 0; color: var(--color-secondary-text); font-size: .875rem; }
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 6px; font-weight: 600; font-size: .8125rem; line-height: 1.5; background: #eef2ef; color: #53645a; white-space: nowrap; }
+.badge--success { background: var(--color-selected); color: var(--color-primary-text); }
+.badge--warning { background: #fff5df; color: #805817; }
+.state-panel { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 32px 16px; border-radius: 12px; background: var(--color-background); min-height: 220px; }
+.state-panel__icon { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; color: var(--color-primary-text); background: var(--color-selected); margin-bottom: 14px; }
+.state-panel h3 { margin: 0; font-size: 1rem; }
+.state-panel p { color: var(--color-secondary-text); max-width: 400px; font-size: .875rem; margin: 8px 0 0; }
+.state-panel .button { margin-top: 18px; }
+.state-panel--error .state-panel__icon { color: var(--color-danger); background: #fff0eb; }
+.spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
+@media (max-width: 600px) { .card { padding: 20px; } .card__header { gap: 10px; } }

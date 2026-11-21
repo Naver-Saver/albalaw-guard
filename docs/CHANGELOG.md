@@ -17,6 +17,14 @@
 - `POST /translate`(API-10) 구현 완료 (`app/api/routes/translate.py`). 실패 시 원문을 돌려주지 않고 502.
 - Papago 호출 형식은 실제 응답 샘플(`backend/samples/raw/papago/`) 기준: 헤더 `X-NCP-APIGW-API-KEY-ID`/`X-NCP-APIGW-API-KEY`, JSON `{source, target, text}`, 응답 `message.result.translatedText`, 오류 `error.errorCode`.
 
+## 2026-11-21 (#31)
+
+- `main.py`에 `/api/qa/search`·`/api/law/sources/{id}` 라우터 등록, 서버 시작 시 `load_law_data()` 호출.
+- 서류 평가(`/api/contracts/review`) 근거 검색을 `law_search.search_evidence`로 교체, 예전 `law_qa` 모듈 삭제.
+- 최저임금은 `law-data/min-wage.json` 한 곳에서만 읽는다 (`services/wage.py`의 연도별 상수 삭제).
+- `sync.wage`: 공공데이터 CSV에 아직 없는 고시 확정 연도를 `samples/raw/wage/announced.csv`로 보충 (2027년 10,700원). 같은 연도는 공공데이터 CSV 우선.
+- `sync` 공통 `read_env()`: `.env` 값의 따옴표를 제거 (`LAW_GO_KR_OC="..."` 형태에서 법제처 사용자 검증 실패하던 문제).
+
 ## 2026-11-21
 
 ### 추가한 인터페이스 (B·C가 호출)
