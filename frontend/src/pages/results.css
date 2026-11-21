@@ -72,3 +72,8 @@
 .consultation-links a { color: var(--color-primary-text); font-size: .875rem; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; text-underline-offset: 4px; }
 @media (max-width: 1200px) { .calculation-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .results-grid { grid-template-columns: 1fr; } }
 @media (max-width: 700px) { .results-heading { flex-direction: column; gap: 12px; } .results-summary { flex-wrap: wrap; padding: 20px; gap: 14px; } .results-summary > .button { width: 100%; margin: 8px 0 0; } .results-summary h2 { font-size: 1.125rem; } .results-input dl { grid-template-columns: 1fr; } .calculation-card { padding: 16px 12px; } .calculation-card > strong { font-size: 1.375rem; } .check-item summary { flex-wrap: wrap; } .results-actions { flex-direction: column; padding: 20px; align-items: stretch; } .consultation { padding: 18px; } .results-demo { padding: 14px; } }
+
+.source-detail { margin: 8px 0; font-size: .8125rem; }
+.source-detail summary { cursor: pointer; color: var(--color-primary-text); font-weight: 600; }
+.source-detail summary:focus-visible { outline: 3px solid var(--color-primary-text); outline-offset: 3px; }
+.source-detail pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.8; background: var(--color-background); padding: 12px; border-radius: 8px; max-height: 320px; overflow: auto; }

@@ -18,12 +18,32 @@ class ExtractedFields(BaseModel):
     weekly_hours: ExtractedField = Field(default_factory=ExtractedField)
     work_days: ExtractedField = Field(default_factory=ExtractedField)
     break_minutes: ExtractedField = Field(default_factory=ExtractedField)
+    year: ExtractedField = Field(default_factory=ExtractedField)
+
+
+class PayslipLineExtracted(BaseModel):
+    name: str
+    amount: int
+    source_text: str
+
+
+class PayslipExtracted(BaseModel):
+    """급여명세서 OCR에서 읽은 값 (API-03 doc_type=payslip). 사용자가 확인·수정한 뒤 API-14로 보낸다."""
+
+    employee_name: str | None = None
+    pay_date: str | None = None
+    items: list[PayslipLineExtracted] = Field(default_factory=list)
+    deductions: list[PayslipLineExtracted] = Field(default_factory=list)
+    total_pay: ExtractedField = Field(default_factory=ExtractedField)
+    net_pay: ExtractedField = Field(default_factory=ExtractedField)
+    calculation_method: str | None = None
 
 
 class OcrResult(BaseModel):
     doc_type: DocType
     raw_text: str
     extracted: ExtractedFields
+    payslip: PayslipExtracted | None = None
 
 
 Lang = Literal["ko", "en", "vi", "zh-CN"]

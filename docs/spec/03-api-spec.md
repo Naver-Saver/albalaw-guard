@@ -14,7 +14,7 @@
 | 추적 | 모든 응답 헤더에 `X-Request-ID` (요청에 있으면 그대로, 없으면 서버가 생성). 서버 로그에 같은 ID 기록 |
 | 상태 코드 | 200 성공, 202 비동기 작업 생성, 400 업무 규칙 위반, 404 없음/만료, 413 파일 크기 초과, 422 검증 실패, 502 외부 서비스 실패 |
 | 인증 | 없음 (MVP). 남용 방지는 Nginx rate limit `[미정]` |
-| 언어 | `lang`: `ko`(기본) `en` `vi` `zh-CN` |
+| 언어 | `lang`: `ko`(기본) `en` `vi` `zh-CN`. `POST /payslips/review`·`POST /recordings/evidence`는 서버가 번역하고, `POST /contracts/review`의 `lang`은 **서버가 사용하지 않는다**(항상 한국어). 점검 결과 번역은 프런트가 `POST /translate`로 한다 |
 
 ## 오류 코드
 

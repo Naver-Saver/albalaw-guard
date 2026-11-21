@@ -333,3 +333,59 @@ def test_recording_not_found_and_ttl_expiry(rec_env):
     expired = client.get(f"/api/recordings/{job_id}")
     assert expired.status_code == 404
     assert expired.json()["error"]["code"] == "NOT_FOUND"
+
+
+def test_recording_reads_result_to_obs_json_and_deletes_it(rec_env):
+    """실제 CLOVA Speech(resultToObs=True)는 상태 조회의 segments 를 '[]'로 주고, 결과는 버킷의
+    '{파일 이름}_{token}.json' 에 남긴다. 그 파일을 읽어 타임라인을 만들고 원본·결과를 모두 지운다."""
+    storage, install_transport, _ = rec_env
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("/recognizer/object-storage"):
+            return httpx.Response(200, json={"token": "tok-obs", "result": "WAITING"})
+        if url.endswith("/recognizer/tok-obs"):
+            return httpx.Response(200, json={"token": "tok-obs", "result": "COMPLETED", "segments": "[]"})
+        if "clovastudio" in url:
+            content = json.dumps(
+                [{"start_ms": 0, "speaker": "화자 A", "text": "시급은 만 원", "category": "임금"}],
+                ensure_ascii=False,
+            )
+            return httpx.Response(
+                200,
+                json={
+                    "status": {"code": "20000"},
+                    "result": {"message": {"role": "assistant", "content": content}},
+                },
+            )
+        return httpx.Response(404)
+
+    install_transport(handler)
+    up = client.post(
+        "/api/recordings",
+        files={"file": ("talk.wav", _make_wav_bytes(1.0), "audio/wav")},
+        data={"consent": "true"},
+    )
+    job_id = up.json()["data"]["job_id"]
+    audio_key = StorageKeys.upload_recording(job_id, "wav")
+    result_key = recordings.speech_result_key(audio_key, "tok-obs")
+    assert result_key == f"{job_id}.wav_tok-obs.json"
+    storage.put_json(
+        result_key,
+        {
+            "result": "COMPLETED",
+            "segments": [
+                {"start": 0, "end": 2000, "speaker": {"label": "1"}, "text": "시급은 만 원으로 할게요"}
+            ],
+        },
+    )
+
+    done = client.get(f"/api/recordings/{job_id}").json()["data"]
+    assert done["status"] == "done"
+    assert done["segments"][0]["text"] == "시급은 만 원으로 할게요"
+    assert done["timeline"][0]["category"] == "임금"
+    assert not storage.exists(audio_key) and not storage.exists(result_key)
+
+
+def test_speech_result_key_respects_prefix():
+    assert recordings.speech_result_key("uploads/recordings/a.mp3", "t", "results/") == "results/a.mp3_t.json"

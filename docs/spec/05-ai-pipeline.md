@@ -63,7 +63,7 @@
 - Chatbot: `{"version":"v2","userId":<임시 세션 ID>,"timestamp":ms,"bubbles":[{"type":"text","data":{"description":질문}}],"event":"send"}`
   - FAQ 판정(BR-11): 기본(실패) 답변이 아니고 신뢰도 기준 통과
   - 실제 응답(`samples/raw/chatbot/`): 일치 시 `bubbles[0].information`에 `score`·`matchingType`(`exactMatch`/`model`)·`scenarioName`, 일치 없음은 `defaultMsgType`/`failureMsgId`(score 없음). 서명 = base64(HMAC-SHA256(Secret, 요청 본문 바이트)).
-  - 유의: `model` 매칭은 0.70~0.96 점수대에서 엉뚱한 FAQ가 걸리기도 한다(예: "주 10시간 일하면 주휴수당 있어?" → 연장근로 FAQ 0.73). 근무시간을 말한 질문은 Chatbot을 건너뛴다.
+  - 유의: `model` 매칭은 0.70~0.96 점수대에서 엉뚱한 FAQ가 걸리기도 한다(예: "주 10시간 일하면 주휴수당 있어?" → 연장근로 FAQ 0.73). 그래서 기준을 0.75로 올리고, 정확 일치가 아닌 매칭은 질문 핵심어가 FAQ 답변·시나리오에 나올 때만 인정하며, 근무시간을 말한 질문은 Chatbot을 건너뛴다. 남는 오답은 의미가 비슷한 다른 질문(예: "최저임금 위반하면 벌금이 얼마야" → 최저임금 금액 FAQ)이다.
   - CSR 실제 응답(`samples/raw/csr/`): 성공 `{"text"}`, 60초 초과 → 500 `STT006`.
 - Studio(미매칭 시): AI-03과 같은 규칙, [계산 결과] 대신 [질문]
 
