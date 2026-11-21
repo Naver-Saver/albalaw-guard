@@ -7,6 +7,7 @@
 
 ## 문서
 
+- [기술 문서](docs/TECHNICAL.md) — 기술 스펙 · 아키텍처 · 발전 과정 · 조원별 역할
 - [PRD](docs/PRD.md) — 목표, 범위, 일정
 - [명세 (SDD)](docs/spec/README.md) — 요구사항 분석 · 기능 명세 · API 명세(`openapi.yaml`) · 데이터 저장 구조 · AI 파이프라인
 - [협업 컨벤션](docs/CONVENTIONS.md) — 브랜치·커밋·PR 규칙
@@ -18,7 +19,7 @@
 backend/    FastAPI (Python 3.12)
 frontend/   React + TypeScript + Vite
 infra/      운영 docker-compose, ncloud CLI 스크립트
-docs/       PRD, 명세(spec/), 컨벤션, 배포 가이드
+docs/       기술 문서, PRD, 명세(spec/), 컨벤션, 배포 가이드
 .github/    CI/CD 워크플로, PR·이슈 템플릿
 ```
 
