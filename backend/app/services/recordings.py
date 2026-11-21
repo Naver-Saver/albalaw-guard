@@ -69,6 +69,7 @@ class _JobRecord:
     timeline: list[TimelineEntry] = field(default_factory=list)
     transcript: str | None = None
     expires_at: float | None = None
+    result_wait_started_at: float | None = None
 
 
 _jobs_lock = threading.Lock()
@@ -291,6 +292,13 @@ async def create_recording_job(*, file: UploadFile, consent: bool) -> RecordingJ
     return _to_schema(record)
 
 
+def speech_result_key(audio_key: str, token: str, prefix: str = "") -> str:
+    """Speech 도메인의 결과 폴더와 실제 결과 파일 이름 규칙으로 단일 키를 만든다."""
+    folder = prefix.strip("/")
+    filename = f"{Path(audio_key).name}_{token}.json"
+    return f"{folder}/{filename}" if folder else filename
+
+
 async def get_recording_job(job_id: str) -> RecordingJob:
     """작업 상태를 폴링하고 인식 완료 시 타임라인 생성 및 원본 녹음 삭제를 수행한다."""
     now = time.monotonic()
@@ -312,7 +320,46 @@ async def get_recording_job(job_id: str) -> RecordingJob:
     if poll.status == "processing":
         return RecordingJob(job_id=job_id, status="processing")
 
+    # 비동기 상태 응답은 완료되어도 segments=[]일 수 있다.
+    # resultToObs=true의 실제 대본은 <파일명>_<토큰>.json에 저장된다.
+    result_key = speech_result_key(audio_key, token, s.clova_speech_result_prefix)
+    if poll.status == "completed" and not poll.segments:
+        try:
+            raw = await asyncio.to_thread(get_storage().get_json, result_key)
+        except (ValueError, UnicodeError) as exc:
+            raise AiUnavailableError("음성 인식 결과 파일을 읽지 못했어요. 다시 조회해 주세요.") from exc
+        if raw is None:
+            with _jobs_lock:
+                current = _jobs.get(job_id)
+                if current is None:
+                    raise NotFoundError("녹음 작업을 찾을 수 없거나 만료되었어요.")
+                if current.result_wait_started_at is None:
+                    current.result_wait_started_at = time.monotonic()
+                waiting = time.monotonic() - current.result_wait_started_at < s.recording_result_wait_sec
+            if waiting:
+                return RecordingJob(job_id=job_id, status="processing")
+            poll = clova_speech.SpeechPollResult(
+                status="failed",
+                segments=[],
+                speakers=[],
+                transcript="",
+                duration_sec=0,
+                error_message="음성 인식 결과 파일을 찾지 못했어요. 결과 저장 경로를 확인해 주세요.",
+            )
+        else:
+            if not isinstance(raw, dict) or raw.get("token") != token:
+                raise AiUnavailableError("음성 인식 결과의 작업 정보를 확인하지 못했어요.")
+            segments, speakers, transcript, duration_sec = clova_speech.parse_speech_segments(raw)
+            poll = clova_speech.SpeechPollResult(
+                status="completed",
+                segments=segments,
+                speakers=speakers,
+                transcript=transcript,
+                duration_sec=duration_sec,
+            )
+
     if poll.status == "failed":
+        await asyncio.to_thread(_delete_audio_best_effort, result_key)
         await asyncio.to_thread(_delete_audio_best_effort, audio_key)
         with _jobs_lock:
             current = _jobs.get(job_id)
@@ -324,6 +371,7 @@ async def get_recording_job(job_id: str) -> RecordingJob:
             return _to_schema(current)
 
     if not poll.segments:
+        await asyncio.to_thread(_delete_audio_best_effort, result_key)
         await asyncio.to_thread(_delete_audio_best_effort, audio_key)
         with _jobs_lock:
             current = _jobs.get(job_id)
@@ -335,6 +383,7 @@ async def get_recording_job(job_id: str) -> RecordingJob:
             return _to_schema(current)
 
     if poll.duration_sec > s.recording_max_duration_sec:
+        await asyncio.to_thread(_delete_audio_best_effort, result_key)
         await asyncio.to_thread(_delete_audio_best_effort, audio_key)
         with _jobs_lock:
             current = _jobs.get(job_id)
@@ -346,6 +395,7 @@ async def get_recording_job(job_id: str) -> RecordingJob:
             return _to_schema(current)
 
     timeline = await build_timeline(poll.segments)
+    await asyncio.to_thread(_delete_audio_best_effort, result_key)
     await asyncio.to_thread(_delete_audio_best_effort, audio_key)
 
     with _jobs_lock:

@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     clova_speech_invoke_url: str = ""
     clova_speech_secret: str = ""
     clova_speech_data_key_prefix: str = ""
+    clova_speech_result_prefix: str = ""  # Speech 도메인의 결과 저장 폴더 (같은 버킷)
+    recording_result_wait_sec: int = 60  # 완료 후 OBS 결과 저장 지연 허용
     recording_max_bytes: int = 200 * 1024 * 1024
     recording_max_duration_sec: int = 10 * 60
     recording_job_ttl_sec: int = 3600
