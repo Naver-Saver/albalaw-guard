@@ -43,6 +43,21 @@ def test_text_is_truncated_to_800(law_data_dir):
     assert len(law_search.get_source(data["items"][0]["id"])["text"]) == len(long_text)
 
 
+def test_search_each_covers_each_keyword(law_data_dir):
+    res = law_search.search_each(["주휴수당", "휴게시간", "해고"], per_keyword=1)
+    ids = [i["id"] for i in res]
+    assert ids[0] == "manual-t01" and "manual-t02" in ids and "law-t-26" in ids
+    assert len(ids) == len(set(ids))
+
+
+def test_search_each_limit_dedupe_and_empty(law_data_dir):
+    assert len(law_search.search_each(["주휴수당", "휴게시간", "해고"], limit=2)) == 2
+    same = law_search.search_each(["주휴수당", "주휴일"], per_keyword=1)
+    assert len({i["id"] for i in same}) == len(same)
+    assert law_search.search_each([]) == []
+    assert law_search.search_each(["zzzz없는단어"]) == []
+
+
 def test_get_source(law_data_dir):
     s = law_search.get_source("manual-t01")
     assert s["relatedArticleIds"] == ["law-t-55"]
