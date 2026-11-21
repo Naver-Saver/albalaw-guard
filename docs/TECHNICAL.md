@@ -7,7 +7,7 @@ Saver는 아르바이트생을 위한 근로 서류 점검 웹 서비스다. 근
 | 항목 | 내용 |
 | -------- | ------------------------------------------------------------ |
 | 과정 | 네이버 클라우드 소버린 AI 리터러시 과정 팀 프로젝트(B안) |
-| 운영 주소 | http://101.79.9.131 |
+| 운영 주소 | https://101.79.9.131 |
 | 저장소 | [Naver-Saver/albalaw-guard](https://github.com/Naver-Saver/albalaw-guard) (공개) |
 | 기준 버전 | main `22b5979` (2026-11-21 배포) |
 | 명세 | `docs/PRD.md`, `docs/spec/` (요구사항, 기능, API, 데이터, AI 파이프라인), `docs/spec/openapi.yaml` |
@@ -29,7 +29,7 @@ Saver는 아르바이트생을 위한 근로 서류 점검 웹 서비스다. 근
 | 번역·음성 | Papago, CLOVA Voice | 한국어, English, Tiếng Việt, 中文 지원. 답변을 mp3로 들려줌 |
 | 근거 데이터 | 국가법령정보센터 Open API, 고용노동부 최저임금 CSV, 직접 작성한 Q&A | 조문 329건, Q&A 36건, 최저임금 14개 연도(2027년 10,700원 포함). 임베딩 없이 키워드로 검색 |
 | 저장 | NCP Object Storage `albalaw-uploads` | `law-data/*.json`, `meta/sync_log.json`. 녹음 원본은 처리 후 삭제 |
-| 인프라 | NCP Server(KVM, KR-2, Ubuntu, 디스크 50GB), Docker Compose, NCP Container Registry | Nginx(80번 포트)가 `/api` 요청을 백엔드(8000번 포트)로 전달. SSH는 키 인증만 허용 |
+| 인프라 | NCP Server(KVM, KR-2, Ubuntu, 디스크 50GB), Docker Compose, NCP Container Registry | Nginx가 HTTPS(443번 포트)로 서비스하고 `/api` 요청을 백엔드(8000번 포트)로 전달. 80번 포트는 HTTPS로 리다이렉트. 인증서는 Let's Encrypt IP 인증서(3일마다 자동 갱신). SSH는 키 인증만 허용 |
 | CI/CD | GitHub Actions | PR마다 lint, 테스트, Docker 빌드, PR 제목을 검사. main에 머지되면 이미지 빌드, 배포, 스모크 테스트까지 자동 진행 |
 | 정기 작업 | 서버 cron | 매주 월요일 04:17(KST)에 법령과 최저임금 데이터 수집(`python -m sync.all`). 서버는 600초마다 데이터를 다시 읽음 |
 | 테스트 | pytest(백엔드 약 300건), node:test(프론트엔드 41건), ruff | OpenAPI 계약 테스트와 라우터 등록 누락 검사 포함 |
@@ -38,7 +38,7 @@ Saver는 아르바이트생을 위한 근로 서류 점검 웹 서비스다. 근
 
 ## 2. 아키텍처
 
-브라우저의 요청은 먼저 Nginx가 받고, 그중 `/api` 요청만 FastAPI로 전달한다. FastAPI는 필요에 따라 NAVER Cloud AI 서비스와 Object Storage를 호출한다. 근거 데이터는 서버의 cron이 매주 법령 API에서 받아 버킷에 올린다.
+브라우저의 요청은 먼저 Nginx가 HTTPS로 받고, 그중 `/api` 요청만 FastAPI로 전달한다. FastAPI는 필요에 따라 NAVER Cloud AI 서비스와 Object Storage를 호출한다. 근거 데이터는 서버의 cron이 매주 법령 API에서 받아 버킷에 올린다.
 
 ![시스템 구성: 서버 1대와 외부 서비스 3그룹](images/architecture.png)
 
@@ -78,7 +78,7 @@ Saver는 아르바이트생을 위한 근로 서류 점검 웹 서비스다. 근
 | 11-21 | 2. 백엔드 뼈대 | 공통 응답과 오류 처리, OCR 항목 추출, Studio 공통 모듈과 숫자 검증, 서류 평가 구현. 첫 자동 배포 |
 | 11-21 | 3. 데이터·AI 모듈 | 법령 근거 수집과 검색, 최저임금 데이터 일원화, Object Storage 연동, Papago 번역, CLOVA Voice, 질문 API, 급여명세서 점검·발언 근거 API, 법령 주간 수집 cron 구현. 서버 디스크를 10GB에서 50GB로 확장 |
 | 11-21 | 4. 화면 | 공통 UI, 소개·이용 안내, 언어 선택과 문서 업로드, 추출 확인, 점검 결과, 질문, 대화 기록 화면 구현 |
-| 11-21 | 5. 실제 연동·안정화 | 모든 화면을 실제 API에 연결(계약서·급여명세서 점검, 텍스트·음성 질문, 답변 번역·듣기, 녹음 정리). OCR 추출값 자동 입력을 추가하고, 녹음 정리가 항상 실패하던 CLOVA Speech 결과 읽기 문제를 해결. 계약서 30초 교육 영상 제작 |
+| 11-21 | 5. 실제 연동·안정화 | 모든 화면을 실제 API에 연결(계약서·급여명세서 점검, 텍스트·음성 질문, 답변 번역·듣기, 녹음 정리). OCR 추출값 자동 입력을 추가하고, 녹음 정리가 항상 실패하던 CLOVA Speech 결과 읽기 문제를 해결. 계약서 30초 교육 영상 제작. Let's Encrypt IP 인증서로 HTTPS를 적용해 마이크 음성 질문 활성화 |
 
 진행 중에 바뀐 결정도 두 가지 있다. 처음에는 법제처 생활법령 API를 근거로 쓰려 했지만 호출 오류(코드 04)로 사용할 수 없어, 국가법령정보센터 조문과 직접 작성한 Q&A로 바꿨다. 또한 프로젝트 기간을 2주에서 1주로 줄였다.
 
