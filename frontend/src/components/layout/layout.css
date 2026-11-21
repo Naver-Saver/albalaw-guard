@@ -13,6 +13,7 @@
 .sidebar__document .sidebar__label { margin: 0 0 16px; letter-spacing: 0; }
 .sidebar__document-icon { margin-bottom: 12px; color: #93a89c; }
 .sidebar__document strong { font-size: .875rem; font-weight: 500; }
+.sidebar__filename { display: block; overflow-wrap: anywhere; }
 .sidebar__document p { font-size: .8125rem; color: var(--color-secondary-text); margin: 6px 0 0; }
 .sidebar__privacy { display: flex; align-items: flex-start; gap: 9px; background: var(--color-background); border-radius: 10px; padding: 16px 12px; margin-top: auto; color: var(--color-primary-text); }
 .sidebar__privacy svg { flex-shrink: 0; margin-top: 2px; }
