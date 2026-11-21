@@ -1,15 +1,18 @@
 import type { DocumentKind, DocumentType, Language } from '../document-upload/validation'
 import { SAMPLE_OCR } from './sampleOcr'
+import type { PayslipOcr } from '../payslip/model'
 
 export const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'] as const
 export type Weekday = typeof WEEKDAYS[number]
 export type PreparedDocument = { file: File; kind: DocumentKind; docType: DocumentType; language: Language }
-type ExtractedField<T> = { value: T | null; confidence: 'high' | 'low'; source_text?: string | null }
+export type ExtractedField<T> = { value: T | null; confidence: 'high' | 'low'; source_text?: string | null }
 export type OcrResult = {
   doc_type: DocumentType
   raw_text: string
-  extracted: { hourly_wage: ExtractedField<number>; weekly_hours: ExtractedField<number>; work_days: ExtractedField<Weekday[]>; break_minutes: ExtractedField<number> }
+  extracted: { hourly_wage: ExtractedField<number>; weekly_hours: ExtractedField<number>; work_days: ExtractedField<Weekday[]>; break_minutes: ExtractedField<number>; year?: ExtractedField<number> }
+  payslip?: PayslipOcr | null
 }
+export type DraftField = keyof ReviewDraft
 export type ReviewDraft = { hourly_wage: string; weekly_hours: string; work_days: Weekday[]; break_minutes: string; year: string }
 export type ReviewErrors = Partial<Record<keyof ReviewDraft, string>>
 export type ReviewSession = { mode: 'sample' | 'manual'; document: PreparedDocument | null; ocr: OcrResult | null; draft: ReviewDraft; initialDraft: ReviewDraft; confirmed: boolean; language: Language }
@@ -48,8 +51,16 @@ export function createOcrSession(document: PreparedDocument, ocr: OcrResult): Re
     weekly_hours: ocr.extracted.weekly_hours.value?.toString() ?? '',
     work_days: (ocr.extracted.work_days.value ?? []).filter(day => WEEKDAYS.includes(day)),
     break_minutes: ocr.extracted.break_minutes.value?.toString() ?? '',
+    // 문서의 근로계약기간 연도를 적용 연도 입력란에 그대로 채운다. 못 읽었으면 올해.
+    year: ocr.extracted.year?.value ? String(ocr.extracted.year.value) : session.draft.year,
   }
   return { ...session, ocr, draft, initialDraft: structuredClone(draft) }
+}
+
+/** 입력란별로 OCR이 읽은 값의 신뢰도·원문. 해당 항목을 못 읽었으면 null. */
+export function extractedFor(ocr: OcrResult | null, field: DraftField): ExtractedField<unknown> | null {
+  if (!ocr) return null
+  return (ocr.extracted as Record<string, ExtractedField<unknown> | undefined>)[field] ?? null
 }
 
 export function editReviewSession(session: ReviewSession, draft: ReviewDraft): ReviewSession {

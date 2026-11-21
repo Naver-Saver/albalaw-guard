@@ -18,6 +18,11 @@ import { LiveResultsPage } from './pages/LiveResultsPage'
 import type { ReviewResult } from './features/check-results/types'
 import type { ReviewRequest, ReviewSession } from './features/document-review/model'
 import type { Language } from './features/document-upload/validation'
+import { PayslipReviewPage } from './pages/PayslipReviewPage'
+import { PayslipResultsPage } from './pages/PayslipResultsPage'
+import { createPayslipSession } from './features/payslip/model'
+import type { PayslipRequest, PayslipResult, PayslipSession } from './features/payslip/model'
+import type { OcrResult, PreparedDocument } from './features/document-review/model'
 
 function Workspace() {
   const [section, setSection] = useState<WorkspaceSection>('upload')
@@ -25,6 +30,9 @@ function Workspace() {
   const [review, setReview] = useState<ReviewSession | null>(null)
   const [request, setRequest] = useState<ReviewRequest | null>(null)
   const [serverResult, setServerResult] = useState<ReviewResult | null>(null)
+  const [payslip, setPayslip] = useState<PayslipSession | null>(null)
+  const [payslipRequest, setPayslipRequest] = useState<PayslipRequest | null>(null)
+  const [payslipResult, setPayslipResult] = useState<PayslipResult | null>(null)
   const previousSection = useRef(section)
   useEffect(() => {
     if (previousSection.current !== section) {
@@ -35,15 +43,21 @@ function Workspace() {
   }, [section])
 
   function navigate(next: WorkspaceSection) {
-    if (next === 'upload') { setReview(null); setRequest(null); setServerResult(null); setDocumentName(null) }
+    if (next === 'upload') { setReview(null); setRequest(null); setServerResult(null); setDocumentName(null); setPayslip(null); setPayslipRequest(null); setPayslipResult(null) }
     setSection(next)
   }
-  function beginReview(session: ReviewSession) { setReview(session); setRequest(null); setSection('edit') }
+  function beginReview(session: ReviewSession) { setReview(session); setRequest(null); setPayslip(null); setSection('edit') }
+  function continueFromUpload(document: PreparedDocument, ocr?: OcrResult) {
+    if (ocr && document.docType === 'payslip') { setReview(null); setPayslip(createPayslipSession(document, ocr.raw_text, ocr.payslip, undefined, ocr.extracted.hourly_wage.value)); setPayslipRequest(null); setPayslipResult(null); setSection('edit'); return }
+    beginReview(ocr ? createOcrSession(document, ocr) : createReviewSession('manual', document))
+  }
   const sampleStart = (language: Language = 'ko') => beginReview({ ...createReviewSession('sample'), language })
-  const activeName = review ? review.document?.file.name ?? '샘플_근로계약서' : documentName
+  const activeName = payslip ? payslip.document.file.name : review ? review.document?.file.name ?? '샘플_근로계약서' : documentName
 
   return <AppLayout section={section} onNavigate={navigate} documentName={activeName}>
-    {section === 'upload' ? <DocumentUploadPage live onDocumentChange={setDocumentName} onContinue={(document, ocr) => beginReview(ocr ? createOcrSession(document, ocr) : createReviewSession('manual', document))} onSample={sampleStart} />
+    {section === 'upload' ? <DocumentUploadPage live onDocumentChange={setDocumentName} onContinue={continueFromUpload} onSample={sampleStart} />
+      : section === 'edit' && payslip ? <PayslipReviewPage session={payslip} onChange={next => { setPayslip(next); setPayslipRequest(null); setPayslipResult(null) }} onReplace={() => navigate('upload')} onConfirm={payload => { setPayslipRequest(payload); setSection('results') }} />
+      : section === 'results' && payslip && payslipRequest ? <PayslipResultsPage payload={payslipRequest} cachedResult={payslipResult} onResult={setPayslipResult} onEdit={() => setSection('edit')} />
       : section === 'edit' && review ? <DocumentReviewPage session={review} onChange={next => { setReview(next); setRequest(null); setServerResult(null) }} onReplace={() => navigate('upload')} onConfirm={payload => { setRequest(payload); setSection('results') }} />
         : section === 'results' && request ? review?.mode === 'sample' ? <CheckResultsPage request={request} onEdit={() => setSection('edit')} onAsk={() => setSection('chat')} /> : <LiveResultsPage cachedResult={serverResult} onResult={setServerResult} payload={request} onEdit={() => setSection('edit')} />
           : section === 'chat' ? <QuestionPage onBack={request ? () => setSection('results') : undefined} />
