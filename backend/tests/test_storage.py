@@ -70,7 +70,12 @@ class _FakeS3Client:
 
 def test_storage_keys_formatting():
     assert StorageKeys.LAW_DATA_DEFAULT == "law-data/manyask-worker.json"
-    assert StorageKeys.LAW_QNA == "law/qna_labor.json"
+    assert StorageKeys.LAW_ARTICLES == "law-data/law-articles.json"
+    assert StorageKeys.LAW_QNA_MANUAL == "law-data/qna-manual.json"
+    assert StorageKeys.LAW_MIN_WAGE == "law-data/min-wage.json"
+    assert StorageKeys.META_SYNC_LOG == "meta/sync_log.json"
+    assert StorageKeys.law_data("law-articles.json") == "law-data/law-articles.json"
+    assert StorageKeys.law_data("law-data/min-wage.json") == "law-data/min-wage.json"
     assert StorageKeys.upload_recording("rec_1", ".WAV") == "uploads/rec_1.wav"
     assert StorageKeys.upload_recording("rec_1", "mp3", "") == "rec_1.mp3"
     assert StorageKeys.upload_audio("conv-1", "M4A") == "uploads/audio/conv-1.m4a"

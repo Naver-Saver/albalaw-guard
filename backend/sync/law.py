@@ -14,7 +14,8 @@ from pathlib import Path
 
 import httpx
 
-from sync.common import DRY_RUN_DIR, RAW_DIR, now_kst_iso, read_env, write_json
+from app.services.storage import StorageKeys
+from sync.common import DRY_RUN_DIR, RAW_DIR, now_kst_iso, read_env, upload_json, write_json
 
 BASE_URL = "https://www.law.go.kr/DRF/"
 DEFAULT_LAWS = [
@@ -151,15 +152,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true", help="업로드 없이 backend/data/law-data/ 에 저장")
     parser.add_argument("--save-raw", action="store_true", help="원본 XML을 samples/raw/law_go_kr/ 에 저장")
     args = parser.parse_args(argv)
-    if not args.dry_run:
-        raise SystemExit(
-            "업로드는 아직 연결되지 않았습니다 (C의 storage 모듈 대기). --dry-run 으로 실행하세요."
-        )
 
     payload = collect(args.laws, load_oc(), args.save_raw)
-    out: Path = DRY_RUN_DIR / OUTPUT_NAME
-    write_json(out, payload)
-    print(f"총 {len(payload['items'])}건 저장: {out}")
+    if args.dry_run:
+        out: Path = DRY_RUN_DIR / OUTPUT_NAME
+        write_json(out, payload)
+        print(f"총 {len(payload['items'])}건 저장: {out}")
+        return 0
+
+    key = upload_json(StorageKeys.LAW_ARTICLES, payload)
+    print(f"총 {len(payload['items'])}건 업로드: {key}")
     return 0
 
 
