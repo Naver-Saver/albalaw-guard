@@ -7,7 +7,7 @@
 
 ## 문서
 
-- [기술 문서](docs/TECHNICAL.md) — 기술 스펙 · 아키텍처 · 발전 과정 · 조원별 역할
+- [기술 문서](docs/TECHNICAL.md) ([Word](docs/TECHNICAL.docx)) — 기술 스펙 · 아키텍처 · 발전 과정 · 조원별 역할
 - [PRD](docs/PRD.md) — 목표, 범위, 일정
 - [명세 (SDD)](docs/spec/README.md) — 요구사항 분석 · 기능 명세 · API 명세(`openapi.yaml`) · 데이터 저장 구조 · AI 파이프라인
 - [협업 컨벤션](docs/CONVENTIONS.md) — 브랜치·커밋·PR 규칙
