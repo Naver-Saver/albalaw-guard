@@ -8,8 +8,11 @@
 import json
 import logging
 import os
+import threading
+import time
 from pathlib import Path
 
+from app.core.config import get_settings
 from app.services.storage import StorageKeys, get_storage
 
 logger = logging.getLogger(__name__)
@@ -38,8 +41,40 @@ def _read_local_json(path: Path) -> dict | None:
     return None
 
 
+_cache: dict[str, tuple[float, dict | None]] = {}
+_cache_lock = threading.Lock()
+
+
+def clear_cache() -> None:
+    with _cache_lock:
+        _cache.clear()
+
+
+def cache_ttl() -> int:
+    return max(0, get_settings().law_data_cache_sec)
+
+
 def read_json(name: str) -> dict | None:
-    """law-data/<name> 을 읽어 dict로 반환. 없거나 깨졌으면 None (경고 로그)."""
+    """law-data/<name> 을 읽어 dict로 반환 (TTL 캐시). 없거나 깨졌으면 None (경고 로그).
+
+    Object Storage는 정기 수집(sync.all)으로 갱신되므로, 요청마다 조회하지 않고 TTL 동안 재사용한다.
+    """
+    if os.environ.get("LAW_DATA_DIR", "").strip():  # 로컬 폴더 지정(테스트·로컬)은 캐시하지 않는다
+        return _read_uncached(name)
+    ttl = cache_ttl()
+    now = time.monotonic()
+    with _cache_lock:
+        hit = _cache.get(name)
+    if ttl and hit and now - hit[0] < ttl:
+        return hit[1]
+    data = _read_uncached(name)
+    if ttl and data is not None:  # 실패(None)는 캐시하지 않아 다음 요청에서 다시 시도
+        with _cache_lock:
+            _cache[name] = (now, data)
+    return data
+
+
+def _read_uncached(name: str) -> dict | None:
     override = os.environ.get("LAW_DATA_DIR", "").strip()
     if override:
         return _read_local_json(Path(override) / name)

@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     object_storage_bucket: str = "albalaw-uploads"
     storage_backend: str = "auto"  # auto | ncp | memory
     upload_prefix: str = "uploads/"
+    law_data_cache_sec: int = 600  # law-data/*.json 캐시 시간 (Object Storage 재조회 주기)
     law_data_key: str = "law-data/manyask-worker.json"
 
     # CLOVA OCR

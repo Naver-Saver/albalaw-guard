@@ -97,6 +97,9 @@ jobs:
           SSH="ssh -i ~/.ssh/deploy_key $SERVER_USER@$SERVER_HOST"
           $SSH "mkdir -p $APP_DIR"
           scp -i ~/.ssh/deploy_key infra/docker-compose.prod.yml "$SERVER_USER@$SERVER_HOST:$APP_DIR/docker-compose.yml"
+          # 법령·최저임금 정기 수집 cron (docs/DEPLOY.md §7)
+          scp -i ~/.ssh/deploy_key infra/cron/albalaw-sync "$SERVER_USER@$SERVER_HOST:/etc/cron.d/albalaw-sync"
+          $SSH "chmod 644 /etc/cron.d/albalaw-sync"
           printf 'IMAGE_REGISTRY=%s\nIMAGE_TAG=%s\n' "$REGISTRY" "$IMAGE_TAG" | $SSH "cat > $APP_DIR/.env"
           # BACKEND_ENV 시크릿이 있으면 덮어쓰고, 없으면 서버에 있는 backend.env를 그대로 사용
           if [ -n "$BACKEND_ENV" ]; then

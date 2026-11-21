@@ -1,0 +1,6 @@
+# 공공데이터 정기 수집 (국가법령정보센터 조문·최저임금·수동 Q&A → Object Storage law-data/)
+# 서버 시간대 Asia/Seoul 기준 매주 월요일 04:17. CD가 /etc/cron.d/albalaw-sync 로 설치한다.
+# 실행 결과는 Object Storage meta/sync_log.json 과 /var/log/albalaw-sync.log 에 남는다.
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+17 4 * * 1 root docker exec albalaw-guard-backend-1 python -m sync.all >> /var/log/albalaw-sync.log 2>&1

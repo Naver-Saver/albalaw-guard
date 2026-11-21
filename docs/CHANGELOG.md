@@ -17,6 +17,12 @@
 - `POST /translate`(API-10) 구현 완료 (`app/api/routes/translate.py`). 실패 시 원문을 돌려주지 않고 502.
 - Papago 호출 형식은 실제 응답 샘플(`backend/samples/raw/papago/`) 기준: 헤더 `X-NCP-APIGW-API-KEY-ID`/`X-NCP-APIGW-API-KEY`, JSON `{source, target, text}`, 응답 `message.result.translatedText`, 오류 `error.errorCode`.
 
+## 2026-11-21 (#43)
+
+- 백엔드 이미지에 `sync/`·`samples/raw/wage/` 포함, 서버 cron으로 주 1회 `python -m sync.all` (법령 조문·최저임금·수동 Q&A → Object Storage). `docs/DEPLOY.md` §7
+- `law_data.read_json`: Object Storage 결과를 `LAW_DATA_CACHE_SEC`(기본 600초) 동안 캐시. `LAW_DATA_DIR` 지정 시 캐시 안 함. `clear_cache()` 추가
+- `law_search`: 캐시 시간이 지나면 다시 적재(`load_law_data(keep_on_empty=True)`), 새로 읽은 결과가 비면 기존 인덱스 유지
+
 ## 2026-11-21 (#31)
 
 - `main.py`에 `/api/qa/search`·`/api/law/sources/{id}` 라우터 등록, 서버 시작 시 `load_law_data()` 호출.
