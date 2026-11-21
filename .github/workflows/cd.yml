@@ -97,6 +97,9 @@ jobs:
           SSH="ssh -i ~/.ssh/deploy_key $SERVER_USER@$SERVER_HOST"
           $SSH "mkdir -p $APP_DIR"
           scp -i ~/.ssh/deploy_key infra/docker-compose.prod.yml "$SERVER_USER@$SERVER_HOST:$APP_DIR/docker-compose.yml"
+          # HTTPS IP 인증서 발급·갱신 스크립트 (docs/DEPLOY.md §8)
+          $SSH "mkdir -p $APP_DIR/certs $APP_DIR/acme-webroot"
+          scp -i ~/.ssh/deploy_key infra/tls/setup-ip-cert.sh "$SERVER_USER@$SERVER_HOST:$APP_DIR/setup-ip-cert.sh"
           # 법령·최저임금 정기 수집 cron (docs/DEPLOY.md §7)
           scp -i ~/.ssh/deploy_key infra/cron/albalaw-sync "$SERVER_USER@$SERVER_HOST:/etc/cron.d/albalaw-sync"
           $SSH "chmod 644 /etc/cron.d/albalaw-sync"
@@ -121,10 +124,22 @@ jobs:
           docker image prune -af
           SCRIPT
 
+      - name: HTTPS certificate
+        run: |
+          # 인증서가 없으면 발급하고, 있으면 갱신 설정만 확인한다. 실패해도 HTTP 서비스는 유지된다.
+          ssh -i ~/.ssh/deploy_key "$SERVER_USER@$SERVER_HOST" "bash $APP_DIR/setup-ip-cert.sh $SERVER_HOST $APP_DIR" \
+            || echo "::warning::HTTPS 인증서 발급 실패 — HTTP로 계속 서비스합니다"
+
       - name: Smoke test
         run: |
           for i in $(seq 1 10); do
-            if curl -fsS "http://$SERVER_HOST/api/health"; then exit 0; fi
+            if curl -fsS "https://$SERVER_HOST/api/health"; then
+              echo; curl -sS -o /dev/null -w "http → %{http_code} %{redirect_url}\n" "http://$SERVER_HOST/api/health"
+              exit 0
+            fi
+            if curl -fsS "http://$SERVER_HOST/api/health"; then
+              echo; echo "::warning::HTTPS 없이 HTTP로만 응답합니다"; exit 0
+            fi
             sleep 6
           done
           echo "::error::헬스체크 실패" && exit 1
