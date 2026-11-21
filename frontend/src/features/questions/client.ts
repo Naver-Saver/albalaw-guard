@@ -11,3 +11,8 @@ export function askText(question: string, signal: AbortSignal) {
   if (error) return Promise.reject(new Error(error))
   return request<AskResult>('/ask/text', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: question.trim() }), signal })
 }
+export function askVoice(file: File, signal: AbortSignal) {
+  if (!file.size || file.size > 10 * 1024 * 1024 || !/\.wav$/i.test(file.name)) return Promise.reject(new Error('60초 이하 WAV 음성을 준비해 주세요.'))
+  const body = new FormData(); body.append('file', file)
+  return request<AskResult>('/ask/voice', { method: 'POST', body, signal })
+}
