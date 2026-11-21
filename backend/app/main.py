@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import contracts, health, wage
+from app.api.routes import contracts, health, recordings, wage
 from app.core.config import get_settings
 from app.core.logging import setup_logging
 from app.core.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
@@ -26,3 +26,4 @@ register_exception_handlers(app)
 app.include_router(health.router, prefix="/api")
 app.include_router(wage.router, prefix="/api")
 app.include_router(contracts.router, prefix="/api")
+app.include_router(recordings.router, prefix="/api")
