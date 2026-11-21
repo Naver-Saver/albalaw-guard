@@ -74,6 +74,7 @@ class _JobRecord:
     timeline: list[TimelineEntry] = field(default_factory=list)
     transcript: str | None = None
     expires_at: float | None = None
+    completed_at: float | None = None  # CLOVA Speech가 COMPLETED를 처음 알린 시각 (결과 JSON 저장 대기용)
 
 
 _jobs_lock = threading.Lock()
@@ -128,6 +129,9 @@ async def _read_upload_with_limit(file: UploadFile, max_bytes: int) -> bytes:
             raise FileTooLargeError(f"{max_bytes // (1024 * 1024)}MB 이하 파일만 올릴 수 있어요.")
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+OBS_RESULT_WAIT_SEC = 60
 
 
 def speech_result_key(audio_key: str, token: str, prefix: str = "") -> str:
@@ -350,7 +354,17 @@ async def get_recording_job(job_id: str) -> RecordingJob:
         return RecordingJob(job_id=job_id, status="processing")
 
     if poll.status == "completed" and not poll.segments:
-        poll = await asyncio.to_thread(_read_obs_result, audio_key, token) or poll
+        obs = await asyncio.to_thread(_read_obs_result, audio_key, token)
+        if obs is None:
+            # 상태가 COMPLETED여도 결과 JSON이 버킷에 늦게 써질 수 있다 → 잠시 처리 중으로 두고 다시 읽는다
+            with _jobs_lock:
+                current = _jobs.get(job_id)
+                if current is not None:
+                    current.completed_at = current.completed_at or time.monotonic()
+                    if time.monotonic() - current.completed_at < OBS_RESULT_WAIT_SEC:
+                        return RecordingJob(job_id=job_id, status="processing")
+        else:
+            poll = obs
     await asyncio.to_thread(_delete_result_best_effort, audio_key, token)
 
     if poll.status == "failed":
