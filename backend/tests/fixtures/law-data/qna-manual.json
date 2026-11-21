@@ -1,0 +1,26 @@
+{
+  "source": "MANUAL",
+  "syncedAt": "2026-01-01T00:00:00+09:00",
+  "items": [
+    {
+      "id": "manual-t01",
+      "category": "휴일 > 주휴일",
+      "question": "주휴수당은 어떤 경우에 받을 수 있나요?",
+      "answer": "테스트용 답변: 1주 소정근로일을 개근하고 주 15시간 이상 일하면 대상이 될 수 있어요.",
+      "relatedLaw": "근로기준법 제55조",
+      "relatedArticleIds": ["law-t-55"],
+      "keywords": ["주휴수당", "주휴일", "15시간"],
+      "sourceUrl": "https://example.test/manual-t01"
+    },
+    {
+      "id": "manual-t02",
+      "category": "근로시간 > 휴게",
+      "question": "근무 중 휴게시간은 얼마나 받아야 하나요?",
+      "answer": "테스트용 답변: 4시간이면 30분 이상, 8시간이면 1시간 이상이에요.",
+      "relatedLaw": "근로기준법 제54조",
+      "relatedArticleIds": ["law-t-54"],
+      "keywords": ["휴게시간", "휴식", "30분"],
+      "sourceUrl": "https://example.test/manual-t02"
+    }
+  ]
+}
