@@ -13,8 +13,8 @@ from app.schemas.contracts import CheckItem, ReviewRequest, ReviewResult, Source
 from app.schemas.wage import WageCheckResponse
 from app.services import clova_studio
 from app.services.clova_studio import Message
-from app.services.law_qa import LawQa, get_index
-from app.services.number_guard import filter_unverified_sentences
+from app.services.law_search import build_evidence_block, get_source, search_evidence
+from app.services.number_guard import filter_unverified_sentences, numbers_in
 from app.services.wage import WageCheckResult, check_wage
 
 logger = logging.getLogger("app.review")
@@ -24,7 +24,17 @@ DISCLAIMER = (
     "또는 대한법률구조공단(132)에 상담할 수 있어요."
 )
 SNIPPET_CHARS = 160
-CONTEXT_CHARS = 800
+EVIDENCE_MAX_CHARS = 4000  # Studio 프롬프트 [근거 원문] 전체 길이
+
+# 확인 항목 주제별 근거 검색어.
+# 주제마다 따로 검색해야 한 주제(문항 수가 많은 최저임금)가 근거를 독식하지 않는다.
+TOPIC_QUERIES = {
+    "min_wage": "최저임금",
+    "weekly_holiday": "주휴수당",
+    "break_time": "휴게시간",
+}
+MANUAL_PER_TOPIC = 1  # 주제마다 쉬운 설명(수동 Q&A) 1건
+ARTICLES_PER_TOPIC = 1  # + 그 Q&A에 연결된 법령 조문 1건
 
 
 def _fmt(n: float) -> str:
@@ -32,10 +42,11 @@ def _fmt(n: float) -> str:
 
 
 def build_items(req: ReviewRequest, c: WageCheckResult) -> tuple[list[CheckItem], list[str]]:
-    """확인 항목과 근거 검색 키워드를 만든다."""
+    """확인 항목과 근거를 찾을 주제를 만든다. 주제는 '확인 필요(check)' 항목이 먼저 오도록 정렬한다."""
     items: list[CheckItem] = []
-    keywords = ["최저임금"]
+    topics: list[tuple[str, str]] = []  # (주제, level)
 
+    topics.append(("min_wage", "ok" if c.meets_minimum else "check"))
     if c.meets_minimum:
         items.append(
             CheckItem(
@@ -59,8 +70,8 @@ def build_items(req: ReviewRequest, c: WageCheckResult) -> tuple[list[CheckItem]
             )
         )
 
+    topics.append(("weekly_holiday", "check" if c.weekly_holiday_eligible else "ok"))
     if c.weekly_holiday_eligible:
-        keywords.append("주휴")
         items.append(
             CheckItem(
                 level="check",
@@ -86,7 +97,7 @@ def build_items(req: ReviewRequest, c: WageCheckResult) -> tuple[list[CheckItem]
         daily_hours = req.weekly_hours / len(req.work_days)
         required = 60 if daily_hours >= 8 else 30 if daily_hours >= 4 else 0
         if required and req.break_minutes < required:
-            keywords.append("휴게")
+            topics.append(("break_time", "check"))
             items.append(
                 CheckItem(
                     level="check",
@@ -98,11 +109,36 @@ def build_items(req: ReviewRequest, c: WageCheckResult) -> tuple[list[CheckItem]
                     ),
                 )
             )
-    return items, keywords
+    ordered = [t for t, level in topics if level == "check"] + [t for t, level in topics if level == "ok"]
+    return items, ordered
 
 
-def _allowed_numbers(req: ReviewRequest, c: WageCheckResult) -> set[float]:
+def find_evidence(topics: list[str]) -> list[dict]:
+    """주제마다 수동 Q&A와 그에 연결된 법령 조문을 모은다 (중복 제거, 주제 순서 유지)."""
+    found: list[dict] = []
+    seen: set[str] = set()
+
+    def add(item: dict | None) -> None:
+        if item and item["id"] not in seen:
+            seen.add(item["id"])
+            found.append(item)
+
+    for topic in topics:
+        manuals = search_evidence(TOPIC_QUERIES[topic], limit=MANUAL_PER_TOPIC, sources=["MANUAL"])
+        if not manuals:  # 수동 Q&A가 없으면 조문 검색으로 대체
+            manuals = search_evidence(TOPIC_QUERIES[topic], limit=MANUAL_PER_TOPIC)
+        for m in manuals:
+            add(m)
+            related = (get_source(m["id"]) or {}).get("relatedArticleIds") or []
+            for article_id in related[:ARTICLES_PER_TOPIC]:
+                add(get_source(article_id))
+    return found
+
+
+def _allowed_numbers(req: ReviewRequest, c: WageCheckResult, items: list[CheckItem]) -> set[float]:
     values = {float(v) for v in asdict(c).values() if isinstance(v, int | float) and not isinstance(v, bool)}
+    for item in items:  # 확인 항목 문구의 숫자는 코드 템플릿이 만든 값
+        values |= numbers_in(item.description)
     if req.break_minutes is not None:
         values.add(float(req.break_minutes))
     if req.work_days:
@@ -110,13 +146,26 @@ def _allowed_numbers(req: ReviewRequest, c: WageCheckResult) -> set[float]:
     return values
 
 
-async def explain(req: ReviewRequest, c: WageCheckResult, sources: list[LawQa]) -> str | None:
-    """근거 문항이 있을 때만 Studio 설명을 만든다. 실패하면 None (FS-01 예외 표)."""
+def build_user_prompt(c: WageCheckResult, items: list[CheckItem], sources: list[dict]) -> str:
+    calc = {k: v for k, v in asdict(c).items() if k != "notice"}
+    checks = "\n".join(
+        f"- [{'확인 필요' if i.level == 'check' else '문제 없음'}] {i.title}: {i.description}" for i in items
+    )
+    context = build_evidence_block(sources, max_total_chars=EVIDENCE_MAX_CHARS)
+    return (
+        f"[확인 항목]\n{checks}\n\n"
+        f"[계산 결과]\n{json.dumps(calc, ensure_ascii=False)}\n\n"
+        f"[근거 원문]\n{context}"
+    )
+
+
+async def explain(
+    req: ReviewRequest, c: WageCheckResult, items: list[CheckItem], sources: list[dict]
+) -> str | None:
+    """근거가 있을 때만 Studio 설명을 만든다. 실패하면 None (FS-01 예외 표)."""
     if not sources or not clova_studio.is_configured():
         return None
-    calc = {k: v for k, v in asdict(c).items() if k != "notice"}
-    context = "\n\n".join(f"[{qa.title}]\n{qa.answer[:CONTEXT_CHARS]}" for qa in sources)
-    user = f"[계산 결과]\n{json.dumps(calc, ensure_ascii=False)}\n\n[근거 원문]\n{context}"
+    user = build_user_prompt(c, items, sources)
     try:
         text = await clova_studio.chat(
             [Message("system", load("review_explain_system")), Message("user", user)], temperature=0.3
@@ -124,7 +173,7 @@ async def explain(req: ReviewRequest, c: WageCheckResult, sources: list[LawQa]) 
     except AppError as e:
         logger.info("explanation skipped: %s", e.code)
         return None
-    kept, removed = filter_unverified_sentences(text, _allowed_numbers(req, c))
+    kept, removed = filter_unverified_sentences(text, _allowed_numbers(req, c, items))
     if removed:
         logger.info("number guard removed %d sentence(s)", len(removed))
     return kept or None
@@ -132,16 +181,18 @@ async def explain(req: ReviewRequest, c: WageCheckResult, sources: list[LawQa]) 
 
 async def review(req: ReviewRequest) -> ReviewResult:
     c = check_wage(req.hourly_wage, req.weekly_hours, req.year)
-    items, keywords = build_items(req, c)
-    found = get_index().search(keywords, limit=3)
-    explanation = await explain(req, c, found)
+    items, topics = build_items(req, c)
+    found = find_evidence(topics)
+    explanation = await explain(req, c, items, found)
     return ReviewResult(
         calculation=WageCheckResponse(**asdict(c)),
         items=items,
         explanation=explanation,
         sources=[
-            Source(id=qa.id, title=qa.title, snippet=qa.answer[:SNIPPET_CHARS] or None, url=qa.url)
-            for qa in found
+            Source(
+                id=s["id"], title=s["title"], snippet=s["text"][:SNIPPET_CHARS] or None, url=s["sourceUrl"]
+            )
+            for s in found
         ],
         disclaimer=DISCLAIMER,
     )

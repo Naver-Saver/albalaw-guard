@@ -20,7 +20,9 @@ class Settings(BaseSettings):
     ncp_access_key: str = ""
     ncp_secret_key: str = ""
     object_storage_endpoint: str = "https://kr.object.ncloudstorage.com"
+    object_storage_region: str = "kr-standard"
     object_storage_bucket: str = "albalaw-uploads"
+    storage_backend: str = "auto"  # auto | ncp | memory
     upload_prefix: str = "uploads/"
     law_data_key: str = "law-data/manyask-worker.json"
 
@@ -31,6 +33,10 @@ class Settings(BaseSettings):
     # CLOVA Speech (장문 인식)
     clova_speech_invoke_url: str = ""
     clova_speech_secret: str = ""
+    clova_speech_data_key_prefix: str = ""
+    recording_max_bytes: int = 200 * 1024 * 1024
+    recording_max_duration_sec: int = 10 * 60
+    recording_job_ttl_sec: int = 3600
 
     # CLOVA Studio (API 키 nv-…, Request ID는 플레이그라운드 > 코드 보기)
     clova_studio_api_key: str = ""

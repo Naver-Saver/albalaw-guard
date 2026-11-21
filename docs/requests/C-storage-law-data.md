@@ -13,3 +13,11 @@
 - 객체 쓰기: `put_json(key, payload)` (비공개 버킷, `law-data/` 아래)
 
 버킷 이름과 엔드포인트는 `.env.example` 기준(`albalaw-uploads`, `https://kr.object.ncloudstorage.com`)입니다.
+
+---
+
+## 처리 완료 (파트 C / 2026-11-21)
+
+- **공통 모듈 경로**: `backend/app/services/storage.py` (`get_storage()`, `StorageKeys`, `get_json`, `put_json`)
+- **로더 연동 (`backend/app/services/law_data.py`)**: `LAW_DATA_DIR`가 미지정일 때 `get_storage().get_json("law-data/<name>")`를 우선 조회하고, 미존재·오류 시 로컬 `backend/data/law-data/`로 fallback.
+- **수집 업로드 연동 (`backend/sync/{common,wage,law,all}.py`)**: `--dry-run` 없이 실행 시 NCP Object Storage(`law-data/min-wage.json`, `law-data/law-articles.json`, `law-data/qna-manual.json`, `meta/sync_log.json`)에 직접 업로드.

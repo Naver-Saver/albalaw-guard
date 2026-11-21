@@ -16,8 +16,12 @@ def _to_number(token: str) -> float:
     return float(token.replace(",", ""))
 
 
+# 법령 인용(제55조, 제6조의2, 제1항, 제3호)의 숫자는 금액·시간이 아니므로 검사에서 뺀다
+_STATUTE_REF = re.compile(r"제\s*\d+\s*(?:조(?:의\s*\d+)?|항|호)")
+
+
 def numbers_in(text: str) -> set[float]:
-    return {_to_number(t) for t in _NUM.findall(text)}
+    return {_to_number(t) for t in _NUM.findall(_STATUTE_REF.sub(" ", text))}
 
 
 def filter_unverified_sentences(text: str, allowed: set[float]) -> tuple[str, list[str]]:

@@ -69,7 +69,7 @@ CSV에 적용기간 열이 없어 해당 연도 1/1~12/31로 채운다.
 
 | 대상 | 구조 | 만료 |
 | --- | --- | --- |
-| 백문백답 인덱스 | 시작 시 `law-data/manyask-worker.json` 로드 → 리스트 + 키워드 역색인 | 서버 수명 |
+| 근거 인덱스 (`law_search`) | 서버 시작 시 `law-data/qna-manual.json`·`law-articles.json` 로드 → 리스트 + id 색인 | 서버 수명 |
 | AI 응답 캐시 (NFR-05) | `dict[sha256(서비스+입력)] → 결과`, 최대 500건 LRU | 1일 |
 | 녹음 작업 (`RecordingJob`) | `dict[job_id] → 상태·결과` | 조회 후 1시간 (BR-10) |
 

@@ -115,7 +115,7 @@ jobs:
           echo "$NCP_SECRET_KEY" | docker login "$REGISTRY" -u "$NCP_ACCESS_KEY" --password-stdin
           docker compose pull
           docker compose up -d --remove-orphans
-          docker image prune -f
+          docker image prune -af
           SCRIPT
 
       - name: Smoke test
