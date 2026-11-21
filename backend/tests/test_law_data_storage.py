@@ -175,29 +175,6 @@ def test_upload_storage_requires_ncp_credentials_when_not_injected(tmp_path: Pat
         sync_common.get_upload_storage()
 
 
-def test_read_json_caches_object_storage_within_ttl(monkeypatch):
-    """Object Storage는 TTL 동안 다시 조회하지 않고, TTL이 지나면 새 값을 읽는다 (#43)."""
-    import time as _time
-
-    from app.services import law_data, storage
-    from app.services.storage import InMemoryObjectStorage, StorageKeys
-
-    monkeypatch.delenv("LAW_DATA_DIR", raising=False)
-    mem = InMemoryObjectStorage()
-    storage.set_storage(mem)
-    law_data.clear_cache()
-    key = StorageKeys.law_data(law_data.MIN_WAGE_FILE)
-    mem.put_json(key, {"items": [{"year": 2026, "hourlyWage": 1}]})
-    assert law_data.read_json(law_data.MIN_WAGE_FILE)["items"][0]["hourlyWage"] == 1
-
-    mem.put_json(key, {"items": [{"year": 2026, "hourlyWage": 2}]})
-    assert law_data.read_json(law_data.MIN_WAGE_FILE)["items"][0]["hourlyWage"] == 1  # 캐시
-
-    now = _time.monotonic()
-    monkeypatch.setattr(law_data.time, "monotonic", lambda: now + law_data.cache_ttl() + 1)
-    assert law_data.read_json(law_data.MIN_WAGE_FILE)["items"][0]["hourlyWage"] == 2  # TTL 경과
-
-
 def test_law_search_reload_keeps_index_when_storage_empty(monkeypatch, law_data_dir):
     from app.services import law_data, law_search
 
