@@ -1,16 +1,27 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import contracts, health, recordings, wage
+from app.api.routes import contracts, health, law, recordings, wage
 from app.core.config import get_settings
 from app.core.logging import setup_logging
 from app.core.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
 from app.core.response import register_exception_handlers
+from app.services.law_search import load_law_data
 
 settings = get_settings()
 setup_logging(settings.log_level)
 
-app = FastAPI(title="알바생 노동권 지킴이 API", version=settings.app_version)
+
+@asynccontextmanager
+async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    load_law_data()  # 근거 데이터(law-data/*.json)를 시작 시 메모리에 적재 (NFR: DB 없음)
+    yield
+
+
+app = FastAPI(title="알바생 노동권 지킴이 API", version=settings.app_version, lifespan=lifespan)
 
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(
@@ -26,4 +37,5 @@ register_exception_handlers(app)
 app.include_router(health.router, prefix="/api")
 app.include_router(wage.router, prefix="/api")
 app.include_router(contracts.router, prefix="/api")
+app.include_router(law.router, prefix="/api")
 app.include_router(recordings.router, prefix="/api")

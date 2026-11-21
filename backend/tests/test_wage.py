@@ -35,3 +35,15 @@ def test_api_wage_check_envelope():
     data = res.json()["data"]
     assert data["meets_minimum"] is False
     assert data["weekly_holiday_pay"] == 41_280
+
+
+def test_minimum_wage_matches_min_wage_json():
+    from app.services.calc import get_min_wage
+
+    for year in (2026, 2027):
+        assert check_wage(10_000, 20, year).minimum_hourly == get_min_wage(year)["hourlyWage"]
+
+
+def test_minimum_endpoint_2027():
+    res = client.get("/api/wage/minimum", params={"year": 2027})
+    assert res.status_code == 200 and res.json()["data"]["hourly_wage"] == 10_700

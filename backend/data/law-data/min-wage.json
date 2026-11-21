@@ -1,0 +1,89 @@
+{
+  "syncedAt": "2026-11-21T14:01:41+09:00",
+  "items": [
+    {
+      "year": 2027,
+      "hourlyWage": 10700,
+      "periodStart": "2027-01-01",
+      "periodEnd": "2027-12-31"
+    },
+    {
+      "year": 2026,
+      "hourlyWage": 10320,
+      "periodStart": "2026-01-01",
+      "periodEnd": "2026-12-31"
+    },
+    {
+      "year": 2025,
+      "hourlyWage": 10030,
+      "periodStart": "2025-01-01",
+      "periodEnd": "2025-12-31"
+    },
+    {
+      "year": 2024,
+      "hourlyWage": 9860,
+      "periodStart": "2024-01-01",
+      "periodEnd": "2024-12-31"
+    },
+    {
+      "year": 2023,
+      "hourlyWage": 9620,
+      "periodStart": "2023-01-01",
+      "periodEnd": "2023-12-31"
+    },
+    {
+      "year": 2022,
+      "hourlyWage": 9160,
+      "periodStart": "2022-01-01",
+      "periodEnd": "2022-12-31"
+    },
+    {
+      "year": 2021,
+      "hourlyWage": 8720,
+      "periodStart": "2021-01-01",
+      "periodEnd": "2021-12-31"
+    },
+    {
+      "year": 2020,
+      "hourlyWage": 8590,
+      "periodStart": "2020-01-01",
+      "periodEnd": "2020-12-31"
+    },
+    {
+      "year": 2019,
+      "hourlyWage": 8350,
+      "periodStart": "2019-01-01",
+      "periodEnd": "2019-12-31"
+    },
+    {
+      "year": 2018,
+      "hourlyWage": 7530,
+      "periodStart": "2018-01-01",
+      "periodEnd": "2018-12-31"
+    },
+    {
+      "year": 2017,
+      "hourlyWage": 6470,
+      "periodStart": "2017-01-01",
+      "periodEnd": "2017-12-31"
+    },
+    {
+      "year": 2016,
+      "hourlyWage": 6030,
+      "periodStart": "2016-01-01",
+      "periodEnd": "2016-12-31"
+    },
+    {
+      "year": 2015,
+      "hourlyWage": 5580,
+      "periodStart": "2015-01-01",
+      "periodEnd": "2015-12-31"
+    },
+    {
+      "year": 2014,
+      "hourlyWage": 5210,
+      "periodStart": "2014-01-01",
+      "periodEnd": "2014-12-31"
+    }
+  ]
+}
