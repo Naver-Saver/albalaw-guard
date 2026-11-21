@@ -1,0 +1,12 @@
+:root {
+  --font-family: 'Noto Sans KR', system-ui, -apple-system, sans-serif;
+  --color-primary: #03c75a;
+  --color-primary-text: #007f3b;
+  --color-background: #f5f8f6;
+  --color-surface: #ffffff;
+  --color-text: #1d2923;
+  --color-muted: #6e7d74;
+  --color-border: #e1e9e4;
+  --radius-card: 16px;
+  --radius-control: 8px;
+}
