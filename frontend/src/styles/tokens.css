@@ -7,6 +7,9 @@
   --color-text: #1d2923;
   --color-muted: #6e7d74;
   --color-border: #e1e9e4;
+  --color-selected: #e9f9ef;
+  --color-secondary-text: #596d60;
+  --color-danger: #b3442c;
   --radius-card: 16px;
   --radius-control: 8px;
 }
