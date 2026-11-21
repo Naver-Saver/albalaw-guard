@@ -3,6 +3,19 @@
 명세(`docs/spec/`)와 파트 A가 제공하는 인터페이스(함수 시그니처·응답 형식)를 바꿀 때 여기에 기록합니다.
 시그니처가 바뀌면 B·C에게 공지가 필요합니다.
 
+## 2026-11-21 (급여명세서 점검·대화 발언 근거)
+
+### 추가한 API (명세: `openapi.yaml`, `02` FS-01 BR-14·AC-19 / FS-02 BR-15·AC-20, `03` API-14·15)
+
+- **API-14 `POST /payslips/review`** — 급여명세서 점검. 사용자가 확인·수정한 값(지급·공제 항목, 총액, 실지급액, 필요하면 시급·주 소정근로시간)으로 코드가 검산(`calc.check_payslip_totals`)·필수 항목 누락(`checklist.find_missing("PAYSLIP")`)·최저임금·주휴수당 항목 유무·위약금/교육비 등 공제 이름을 확인하고 법령 근거를 붙인다. 서비스 `app/services/payslip_review.py`, 라우터 `app/api/routes/payslips.py`.
+- **API-15 `POST /recordings/evidence`** — 대화 타임라인 발언(API-06)의 근거와 '말로만 한 약속' 안내. 서비스 `app/services/timeline_evidence.py`, 라우터 `app/api/routes/evidence.py`. 저장하지 않는다.
+- 두 API 모두 `lang != "ko"`면 설명 문장만 번역(`translate_texts`/`translate_result`, Papago 실패 시 원문).
+- **`main.py`(B 소유)에 `payslips`·`evidence` 라우터 등록이 필요하다** → `docs/requests/B-law-router-and-data-deploy.md`.
+
+### 데이터 보정 (`law-data/qna-manual.json`)
+
+- manual-012 분류명에서 "주휴수당"을 빼서 "주휴수당" 검색 시 요건 문항(manual-010)이 먼저 나오게 함. 구어 검색을 위해 manual-015·016(야근·잔업), manual-027·028(나오지 마·잘렸어) 키워드 추가. 반영하려면 배포 후 `python -m sync.all`(업로드) 필요.
+
 ## 2026-11-21 (#40 법령 데이터 읽기 보강)
 
 - `law_data.read_json`(실제 NCP 버킷에서 읽을 때만): 읽은 JSON을 프로세스 안에 `LAW_DATA_CACHE_SEC`(기본 600초) 동안 캐시하고(#44 정기 수집분은 캐시 만료 후 재시작 없이 반영, 재조회 실패 시 직전 버킷 값 유지), 실패·없음은 60초간 기억해 그동안 로컬 파일을 쓴다. 읽기 전용 클라이언트는 연결 3초·읽기 10초·재시도 1회의 짧은 타임아웃. `calc.get_min_wage` 등이 요청마다 `read_json`을 호출해도 버킷 호출이 반복되지 않는다. In-Memory 스토리지·`LAW_DATA_DIR`는 기존 동작 그대로.

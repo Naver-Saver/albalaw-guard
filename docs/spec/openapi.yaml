@@ -19,6 +19,7 @@ tags:
 - name: ask
 - name: media
 - name: qa
+- name: payslips
 paths:
   /health:
     get:
@@ -566,6 +567,78 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /payslips/review:
+    post:
+      tags:
+      - payslips
+      operationId: reviewPayslip
+      x-spec-id: API-14
+      x-fs:
+      - FS-01
+      - BR-14
+      summary: 급여명세서 점검 (검산·필수 항목·최저임금·공제, 코드 계산 + 법령 근거)
+      description: '사용자가 확인·수정한 명세서 값을 받아 **코드로** 검산하고 근거를 붙인다. 이름·지급일은 있는지만 보고 저장·반환하지 않는다.
+        `lang`이 ko가 아니면 설명 문장만 번역한다(Papago 실패 시 원문).'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PayslipReviewRequest'
+      responses:
+        '200':
+          description: 점검 결과
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - success
+                - data
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: '#/components/schemas/PayslipReviewResult'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /recordings/evidence:
+    post:
+      tags:
+      - recordings
+      operationId: findTimelineEvidence
+      x-spec-id: API-15
+      x-fs:
+      - FS-02
+      - BR-15
+      summary: 대화 타임라인 발언의 근거와 '말로만 한 약속' 안내
+      description: 'API-06 타임라인의 발언을 받아 관련 근거(수동 Q&A)를 찾고, 말로 한 조건·약속으로 보이면 서면으로 남기도록 안내한다.
+        서버에 저장하지 않는다. `lang`이 ko가 아니면 안내 문장만 번역한다.'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimelineEvidenceRequest'
+      responses:
+        '200':
+          description: 발언별 근거
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - success
+                - data
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: '#/components/schemas/TimelineEvidenceResult'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 components:
   responses:
     BadRequest:
@@ -966,3 +1039,259 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Source'
+    PayslipLine:
+      type: object
+      required:
+      - name
+      - amount
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: 항목 이름 (예 기본급, 주휴수당, 국민연금)
+        amount:
+          type: integer
+          minimum: 0
+          maximum: 1000000000
+          description: 금액(원)
+    PayslipReviewRequest:
+      type: object
+      properties:
+        employee_name:
+          type: [string, 'null']
+          maxLength: 50
+          description: 근로자 식별 정보 (있는지만 확인, 저장·반환 안 함)
+        pay_date:
+          type: [string, 'null']
+          maxLength: 30
+          description: 임금지급일
+        items:
+          type: array
+          maxItems: 30
+          items:
+            $ref: '#/components/schemas/PayslipLine'
+          description: 지급 항목
+        deductions:
+          type: array
+          maxItems: 30
+          items:
+            $ref: '#/components/schemas/PayslipLine'
+          description: 공제 항목
+        total_pay:
+          type: [integer, 'null']
+          minimum: 0
+        net_pay:
+          type: [integer, 'null']
+          minimum: 0
+        calculation_method:
+          type: [string, 'null']
+          maxLength: 300
+          description: 항목별 계산방법 (시간 수 등)
+        hourly_wage:
+          type: [integer, 'null']
+          exclusiveMinimum: 0
+          description: 시급(알면 입력). weekly_hours와 함께 있으면 최저임금·주휴수당을 확인한다
+        weekly_hours:
+          type: [number, 'null']
+          exclusiveMinimum: 0
+          maximum: 168
+        year:
+          type: integer
+          description: 최저임금 적용 연도. 생략 시 요청 시점의 연도
+        lang:
+          $ref: '#/components/schemas/Lang'
+    PayslipTotals:
+      type: object
+      required:
+      - items_sum
+      - deductions_sum
+      - expected_net_pay
+      - mismatches
+      properties:
+        items_sum:
+          type: integer
+        deductions_sum:
+          type: integer
+        total_pay:
+          type: [integer, 'null']
+        net_pay:
+          type: [integer, 'null']
+        expected_net_pay:
+          type: integer
+          description: 총액(없으면 지급 항목 합) - 공제 합
+        total_matches:
+          type: [boolean, 'null']
+        net_matches:
+          type: [boolean, 'null']
+        mismatches:
+          type: array
+          items:
+            type: object
+            required:
+            - field
+            - expected
+            - actual
+            - difference
+            properties:
+              field:
+                type: string
+                enum:
+                - totalPay
+                - netPay
+              expected:
+                type: integer
+              actual:
+                type: integer
+              difference:
+                type: integer
+    PayslipWage:
+      type: object
+      required:
+      - year
+      - minimum_wage
+      - hourly_wage
+      - is_below_minimum
+      - shortfall_per_hour
+      - weekly_holiday_eligible
+      - weekly_holiday_hours
+      - weekly_holiday_pay
+      properties:
+        year:
+          type: integer
+        minimum_wage:
+          type: integer
+        hourly_wage:
+          type: integer
+        is_below_minimum:
+          type: boolean
+        shortfall_per_hour:
+          type: integer
+        weekly_holiday_eligible:
+          type: boolean
+        weekly_holiday_hours:
+          type: number
+        weekly_holiday_pay:
+          type: integer
+    MissingField:
+      type: object
+      required:
+      - item
+      - field_key
+      - source_ids
+      - conditional
+      properties:
+        item:
+          type: string
+        field_key:
+          type: string
+        source_ids:
+          type: array
+          items:
+            type: string
+        conditional:
+          type: boolean
+          description: 상황에 따라 없어도 되는 항목이면 true (확인 후보)
+    PayslipReviewResult:
+      type: object
+      required:
+      - totals
+      - missing
+      - items
+      - sources
+      - disclaimer
+      properties:
+        totals:
+          $ref: '#/components/schemas/PayslipTotals'
+        wage:
+          oneOf:
+          - $ref: '#/components/schemas/PayslipWage'
+          - type: 'null'
+        missing:
+          type: array
+          items:
+            $ref: '#/components/schemas/MissingField'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CheckItem'
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+        disclaimer:
+          type: string
+    TimelineEvidenceRequest:
+      type: object
+      required:
+      - entries
+      properties:
+        entries:
+          type: array
+          minItems: 1
+          maxItems: 50
+          items:
+            type: object
+            required:
+            - start_ms
+            - speaker
+            - text
+            - category
+            properties:
+              start_ms:
+                type: integer
+                minimum: 0
+              speaker:
+                type: string
+                maxLength: 30
+              text:
+                type: string
+                minLength: 1
+                maxLength: 500
+              category:
+                type: string
+                enum:
+                - 임금
+                - 근무시간
+                - 휴게·휴일
+                - 약속·지시
+                - 기타
+        lang:
+          $ref: '#/components/schemas/Lang'
+    TimelineEvidenceResult:
+      type: object
+      required:
+      - entries
+      - checklist_for_next_time
+      - disclaimer
+      properties:
+        entries:
+          type: array
+          items:
+            type: object
+            required:
+            - index
+            - start_ms
+            - sources
+            - verbal_promise
+            properties:
+              index:
+                type: integer
+                description: 요청 entries의 순서(0부터)
+              start_ms:
+                type: integer
+              sources:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Source'
+              verbal_promise:
+                type: boolean
+                description: 말로만 한 조건·약속으로 보이면 true
+              advice:
+                type: [string, 'null']
+        checklist_for_next_time:
+          type: array
+          items:
+            type: string
+        disclaimer:
+          type: string
