@@ -72,7 +72,7 @@ export default function App() {
   const route = useRoute()
   const previousRoute = useRef(route)
   useEffect(() => {
-    document.title = `${route === 'home' ? '내 첫 알바, Saver' : route === 'guide' ? '이용 안내 | Saver' : '내 문서 | Saver'} · 알바생 노동권 지킴이`
+    document.title = `${route === 'home' ? '내 첫 알바, Saver' : route === 'guide' ? '계약서 교육 | Saver' : '내 문서 | Saver'} · 알바생 노동권 지킴이`
     if (previousRoute.current !== route) {
       document.getElementById(route === 'workspace' ? 'main-content' : 'public-content')?.focus()
       window.scrollTo({ top: 0, behavior: 'auto' })

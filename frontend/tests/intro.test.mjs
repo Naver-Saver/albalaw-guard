@@ -25,11 +25,14 @@ test('landing offers real links to service and video guide', async () => {
   assert.match(html, /예시/)
 })
 
-test('guide without supplied media shows an honest empty state and a way forward', async () => {
+test('guide defaults to the published contract education video and offers a way forward', async () => {
   const { GuidePage } = await server.ssrLoadModule('/src/pages/GuidePage.tsx')
   const html = renderToStaticMarkup(createElement(GuidePage))
-  assert.doesNotMatch(html, /<video/)
-  assert.match(html, /준비 중/)
+  assert.match(html, /<video[^>]*controls/)
+  assert.match(html, /src="\/videos\/contract-check.mp4"/)
+  assert.match(html, /poster="\/videos\/contract-check-poster.jpg"/)
+  assert.match(html, /src="\/videos\/contract-check.ko.vtt"/)
+  assert.doesNotMatch(html, /autoplay/i)
   assert.match(html, /href="#\/workspace"/)
   assert.match(html, /href="#\/"/)
 })
