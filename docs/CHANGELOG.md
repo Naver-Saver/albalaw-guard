@@ -3,6 +3,14 @@
 명세(`docs/spec/`)와 파트 A가 제공하는 인터페이스(함수 시그니처·응답 형식)를 바꿀 때 여기에 기록합니다.
 시그니처가 바뀌면 B·C에게 공지가 필요합니다.
 
+## 2026-11-21 (질문 API 보정·Q&A 반영)
+
+- **FAQ 판정 기준 변경(BR-11)**: 점수 0.70 → **0.75**, 정확 일치가 아닌 매칭은 질문 핵심어가 FAQ 답변·시나리오에 나올 때만 인정(`ask.faq_fits_question`). 실제 Chatbot 35문항 점검에서 엉뚱한 FAQ 8건 → 3건(정답 15/21). 점검 스크립트 `backend/scripts/faq_probe.py`와 질문 세트 `backend/samples/faq_probe.json` 추가(리허설 질문을 같은 형식으로 넣어 다시 돌릴 수 있음).
+- 질문 설명 프롬프트에 단정 금지 강화("받을 수 없어요" 같은 결론 단정 회피), 응답의 `**` 굵게 표시 제거.
+- `law_search.keywords_of(text)` 공개 함수 추가.
+- 문서: `POST /contracts/review`의 `lang`은 서버가 사용하지 않음(번역은 프런트가 `POST /translate`)을 `openapi.yaml`·`03`에 명시.
+- 운영: 수정한 수동 Q&A(`qna-manual.json`)를 버킷에 업로드함(서버 캐시 후 반영, 최대 10분).
+
 ## 2026-11-21 (질문 API, #58)
 
 - **API-08 `POST /ask/text`**, **API-07 `POST /ask/voice`** 구현 (명세는 이미 있었음, `03` 설명·오류 보강, FS-03 BR-12 확정).

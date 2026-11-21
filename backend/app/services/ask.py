@@ -16,7 +16,7 @@ from app.schemas.ask import AskResult
 from app.schemas.contracts import Source
 from app.services import calc, clova_chatbot, clova_studio
 from app.services.clova_studio import Message
-from app.services.law_search import build_evidence_block, get_source, search_evidence
+from app.services.law_search import build_evidence_block, get_source, keywords_of, search_evidence
 from app.services.number_guard import filter_unverified_sentences, numbers_in
 
 logger = logging.getLogger("app.ask")
@@ -71,6 +71,14 @@ def calculation_text(question: str) -> tuple[str, set[float]] | None:
     return text, numbers_in(text) | {hours, holiday}
 
 
+def faq_fits_question(question: str, reply: clova_chatbot.ChatbotAnswer) -> bool:
+    """FAQ 답이 질문에 맞는지 한 번 더 본다. 정확 일치는 그대로 인정하고, 그 밖의 매칭(model)은
+    질문의 핵심어가 하나라도 FAQ 답변이나 시나리오 이름에 나와야 한다(엉뚱한 FAQ 매칭 방지)."""
+    if reply.matching_type == "exactMatch":
+        return True
+    return any(k in reply.text or k in (reply.scenario or "") for k in keywords_of(question))
+
+
 def _to_source(item: dict) -> Source:
     return Source(
         id=item["id"],
@@ -118,7 +126,7 @@ async def _explain(question: str, found: list[dict]) -> str | None:
     except AppError as e:
         logger.info("ask explanation skipped: %s", e.code)
         return None
-    kept, removed = filter_unverified_sentences(text, allowed)
+    kept, removed = filter_unverified_sentences(text.replace("**", ""), allowed)  # 굵게(**) 표시 제거
     if removed:
         logger.info("number guard removed %d sentence(s)", len(removed))
     return kept or None
@@ -138,7 +146,7 @@ async def answer_question(question: str) -> AskResult:
         except AppError as e:
             logger.info("chatbot skipped: %s", e.code)
         else:
-            if reply.is_faq and reply.text:
+            if reply.is_faq and reply.text and faq_fits_question(q, reply):
                 sources = [_to_source(i) for i in find_evidence(q, manual_limit=1)]
                 return AskResult(question=q, route="faq", answer=reply.text, sources=sources)
 
