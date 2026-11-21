@@ -107,7 +107,7 @@ export function DocumentUploadPage({ onDocumentChange, onContinue, onSample, liv
       <div className="upload-options">
         <Card title="안내받을 언어" description="편하게 이해할 수 있는 언어를 선택해요.">
           <fieldset className="language-options"><legend className="sr-only">안내받을 언어 선택</legend>{languages.map(item => <label className="language-option" key={item.value}><input type="radio" name="language" value={item.value} checked={language === item.value} onChange={() => { setLanguage(item.value); resetExtraction() }} /><span className="language-code">{item.code}</span><span><strong>{item.label}</strong><small>{item.subtitle}</small></span><span className="language-check" aria-hidden="true"><Icon name="check" width="13" height="13" /></span></label>)}</fieldset>
-          <p className="upload-hint">언어 선택 상태를 확인할 수 있어요. 실제 번역이 연결되기 전까지 안내는 한국어로 표시돼요.</p>
+          <p className="upload-hint">실제 계약서 점검의 설명과 확인 항목을 선택한 언어로 번역해요. 화면 메뉴와 샘플 체험은 한국어로 표시돼요.</p>
         </Card>
         <div className="upload-help"><Icon name="shield" width="24" height="24" /><h2>내 문서, 안심하고 확인하세요</h2><p>이름·주소·계좌 등 민감한 정보가 있다면 가린 사본으로 미리보기를 확인해도 좋아요.</p><ul><li>문서 전체가 보이도록 촬영해요.</li><li>빛 반사와 흐릿한 글자는 피해 주세요.</li><li>PDF는 확인할 한 페이지로 준비해 주세요.</li></ul></div>
       </div>
