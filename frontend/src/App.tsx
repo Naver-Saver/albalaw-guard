@@ -60,7 +60,7 @@ function Workspace() {
       : section === 'results' && payslip && payslipRequest ? <PayslipResultsPage payload={payslipRequest} cachedResult={payslipResult} onResult={setPayslipResult} onEdit={() => setSection('edit')} />
       : section === 'edit' && review ? <DocumentReviewPage session={review} onChange={next => { setReview(next); setRequest(null); setServerResult(null) }} onReplace={() => navigate('upload')} onConfirm={payload => { setRequest(payload); setSection('results') }} />
         : section === 'results' && request ? review?.mode === 'sample' ? <CheckResultsPage request={request} onEdit={() => setSection('edit')} onAsk={() => setSection('chat')} /> : <LiveResultsPage cachedResult={serverResult} onResult={setServerResult} payload={request} onEdit={() => setSection('edit')} />
-          : section === 'chat' ? <QuestionPage onBack={request ? () => setSection('results') : undefined} />
+          : section === 'chat' ? <QuestionPage language={review?.language ?? payslip?.language ?? 'ko'} onBack={request ? () => setSection('results') : undefined} />
           : section === 'recordings' ? <RecordingsPage language={review?.language ?? payslip?.language ?? 'ko'} />
           : section === 'results' && review ? <PendingReviewResult onReview={() => setSection('edit')} />
           : section === 'edit' || section === 'results' ? <StatePanel status="empty" title="확인할 문서를 준비해 주세요" description="문서를 선택해 직접 입력하거나 샘플 OCR 응답으로 체험할 수 있어요." action={<div className="review-empty-actions"><Button onClick={() => navigate('upload')}>문서 선택하기</Button><Button variant="secondary" onClick={() => sampleStart()}>샘플 문서로 체험하기</Button></div>} />
