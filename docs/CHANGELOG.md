@@ -5,7 +5,7 @@
 
 ## 2026-11-21 (#40 법령 데이터 읽기 보강)
 
-- `law_data.read_json`(실제 NCP 버킷에서 읽을 때만): 읽은 JSON을 프로세스 안에 캐시하고(갱신은 서버 재시작으로 반영), 실패·없음은 60초간 기억해 그동안 로컬 파일을 쓴다. 읽기 전용 클라이언트는 연결 3초·읽기 10초·재시도 1회의 짧은 타임아웃. `calc.get_min_wage` 등이 요청마다 `read_json`을 호출해도 버킷 호출이 반복되지 않는다. In-Memory 스토리지·`LAW_DATA_DIR`는 기존 동작 그대로.
+- `law_data.read_json`(실제 NCP 버킷에서 읽을 때만): 읽은 JSON을 프로세스 안에 `LAW_DATA_CACHE_SEC`(기본 600초) 동안 캐시하고(#44 정기 수집분은 캐시 만료 후 재시작 없이 반영, 재조회 실패 시 직전 버킷 값 유지), 실패·없음은 60초간 기억해 그동안 로컬 파일을 쓴다. 읽기 전용 클라이언트는 연결 3초·읽기 10초·재시도 1회의 짧은 타임아웃. `calc.get_min_wage` 등이 요청마다 `read_json`을 호출해도 버킷 호출이 반복되지 않는다. In-Memory 스토리지·`LAW_DATA_DIR`는 기존 동작 그대로.
 - 시그니처 변경 없음. 업로드·읽기 연동 자체는 #41(C)에서 구현됨.
 
 ## 2026-11-21 (Papago 번역, #27)
@@ -21,6 +21,12 @@
 - CLAUDE.md 초안과 다른 점: 레포의 CLOVA 연동처럼 **비동기(`async`)** 로 만들었다 (`app/services/http.py`의 `post_with_retry` 사용). 호출하는 쪽은 `await` 필요.
 - `POST /translate`(API-10) 구현 완료 (`app/api/routes/translate.py`). 실패 시 원문을 돌려주지 않고 502.
 - Papago 호출 형식은 실제 응답 샘플(`backend/samples/raw/papago/`) 기준: 헤더 `X-NCP-APIGW-API-KEY-ID`/`X-NCP-APIGW-API-KEY`, JSON `{source, target, text}`, 응답 `message.result.translatedText`, 오류 `error.errorCode`.
+
+## 2026-11-21 (#43)
+
+- 백엔드 이미지에 `sync/`·`samples/raw/wage/` 포함, 서버 cron으로 주 1회 `python -m sync.all` (법령 조문·최저임금·수동 Q&A → Object Storage). `docs/DEPLOY.md` §7
+- `law_data.read_json`: Object Storage 결과를 `LAW_DATA_CACHE_SEC`(기본 600초) 동안 캐시. `LAW_DATA_DIR` 지정 시 캐시 안 함. `clear_cache()` 추가
+- `law_search`: 캐시 시간이 지나면 다시 적재(`load_law_data(keep_on_empty=True)`), 새로 읽은 결과가 비면 기존 인덱스 유지
 
 ## 2026-11-21 (#31)
 

@@ -21,6 +21,7 @@ TAG="manual-$(git -C "$SRC" rev-parse --short HEAD)"
 docker build -q -t "$REGISTRY/albalaw-backend:$TAG" "$SRC/backend" >/dev/null
 docker build -q -t "$REGISTRY/albalaw-frontend:$TAG" "$SRC/frontend" >/dev/null
 cp "$SRC/infra/docker-compose.prod.yml" "$APP/docker-compose.yml"
+install -m 644 "$SRC/infra/cron/albalaw-sync" /etc/cron.d/albalaw-sync
 printf 'IMAGE_REGISTRY=%s\nIMAGE_TAG=%s\n' "$REGISTRY" "$TAG" > "$APP/.env"
 touch "$APP/backend.env"
 cd "$APP" && docker compose up -d --remove-orphans --pull never

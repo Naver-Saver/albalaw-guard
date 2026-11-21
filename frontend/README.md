@@ -18,6 +18,7 @@ npm.cmd run dev
 
 ```powershell
 npm.cmd run lint
+npm.cmd test
 npm.cmd run build
 npm.cmd run preview
 ```
@@ -33,6 +34,8 @@ npm.cmd run preview
 | `src/components/common/` | 버튼·폼·카드·배지·화면 상태 공통 요소 |
 | `src/components/layout/` | 헤더·사이드바·모바일 메뉴 |
 | `src/pages/CommonUiPreview.tsx` | 공통 요소의 상태와 입력 동작을 확인하는 예시 화면 |
+| `src/pages/DocumentUploadPage.tsx` | 언어·문서 종류·파일 선택·미리보기·동의 화면 |
+| `src/features/document-upload/` | 파일 검사·로컬 미리보기 URL·취소 가능한 처리 상태 체험 |
 | `src/api.ts` | 백엔드 호출 코드 |
 | `src/styles/tokens.css` | 공통 색상·폰트·모서리 변수 |
 | `src/styles/global.css` | 로컬 폰트와 기본 스타일 |
@@ -44,6 +47,16 @@ npm.cmd run preview
 원본 SVG의 신청서 작성 문구는 화면 배치 참고용입니다. 실제 내용은 근로계약서·급여명세서 점검 기획에 맞춥니다.
 
 Naver Cloud API 키는 프론트에 넣지 않습니다. 프론트는 팀 백엔드의 `/api`만 호출합니다. API 연결 시 `main`에 반영된 명세와 공통 응답 형식을 확인합니다.
+
+## 화면 주소
+
+- `/#/`: 서비스 소개 (처음 접속 시 기본 화면)
+- `/#/guide`: 이용 안내 영상 전용 페이지. 영상이 제공되지 않으면 준비 상태와 글 안내를 표시합니다.
+- `/#/workspace`: 언어·문서 종류·파일 선택 화면. 실제 업로드·OCR는 연결하지 않았습니다. 동의 후 체험 버튼은 처리 중 화면만 보여줍니다.
+
+`npm.cmd test`는 경로·소개/영상 렌더링, 파일 검증, 체험 취소와 업로드 초기 상태를 확인합니다. 실제 브라우저 클릭 및 모바일 화면 검증을 대체하지 않습니다.
+
+문서 파일은 메모리와 객체 URL에서만 다룹니다. 파일 교체·삭제·화면 이동 시 기존 URL과 진행 중 체험을 해제합니다. PDF를 새 탭으로 열었다면 해당 탭은 직접 닫아 주세요. 현재 단계에서 PDF 페이지 수는 검사하지 않습니다.
 
 ## 다음 작업
 

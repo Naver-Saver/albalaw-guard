@@ -5,7 +5,8 @@
 환경변수 `LAW_DATA_DIR`가 지정된 경우(테스트·로컬 오버라이드)에는 해당 로컬 폴더만 직접 읽는다.
 
 실제 NCP 버킷에서 읽을 때는 서버가 막히거나 요청마다 네트워크를 타지 않도록:
-- 읽은 JSON은 프로세스 안에 캐시한다. 법령 JSON을 갱신한 뒤에는 서버를 재시작해 반영한다(서버 1대 운영).
+- 읽은 JSON은 프로세스 안에 `LAW_DATA_CACHE_SEC`(기본 600초) 동안 캐시한다. 정기 수집(sync.all, 주 1회 cron)이
+  버킷을 갱신하면 캐시 시간이 지난 뒤 다시 읽어 재시작 없이 반영된다. 0이면 재시작 전까지 계속 캐시한다.
 - 실패·없음은 MISS_TTL_SEC 동안 기억해 그동안은 버킷을 다시 부르지 않고 로컬 파일을 쓴다.
 - 짧은 타임아웃(연결 3초·읽기 10초, 재시도 1회)의 전용 클라이언트를 쓴다.
 (In-Memory 스토리지 등 NCP가 아닌 구현은 그대로 통과시킨다.)
@@ -39,13 +40,18 @@ MISS_TTL_SEC = 60
 
 _lock = threading.Lock()
 _cache_owner: NcpObjectStorage | None = None  # 캐시가 어느 스토리지 기준인지 (set_storage 로 바뀌면 비움)
-_hits: dict[str, dict] = {}  # 버킷에서 읽는 데 성공한 JSON
+_hits: dict[str, tuple[float, dict]] = {}  # 버킷에서 읽는 데 성공한 JSON (읽은 시각, 데이터)
 _misses: dict[str, float] = {}  # 실패·없음 → 다시 시도해도 되는 시각 (time.monotonic 기준)
 _fast_reader: NcpObjectStorage | None = None
 
 
 def data_dir() -> Path:
     return Path(os.environ.get("LAW_DATA_DIR") or DEFAULT_DATA_DIR)
+
+
+def cache_ttl() -> int:
+    """버킷 캐시 시간(초). law_search 도 이 주기로 인덱스를 다시 적재한다. 0 = 만료 없음."""
+    return max(0, get_settings().law_data_cache_sec)
 
 
 def clear_cache() -> None:
@@ -128,17 +134,22 @@ def _read_storage(key: str) -> dict | None:
             _hits.clear()
             _misses.clear()
             _cache_owner = shared
-        if key in _hits:
-            return _hits[key]
+        hit = _hits.get(key)
+        ttl = cache_ttl()
+        if hit and (not ttl or time.monotonic() - hit[0] < ttl):
+            return hit[1]
         if _misses.get(key, 0.0) > time.monotonic():
-            return None
+            return hit[1] if hit else None
         reader = _fast(shared)
 
     data = _fetch(reader, key)
     with _lock:
         if data is not None:
-            _hits[key] = data
+            _hits[key] = (time.monotonic(), data)
             _misses.pop(key, None)
+        elif key in _hits:  # 갱신 시도가 실패하면 직전 버킷 데이터를 계속 쓴다 (로컬 사본보다 최신)
+            _misses[key] = time.monotonic() + MISS_TTL_SEC
+            return _hits[key][1]
         else:
             _misses[key] = time.monotonic() + MISS_TTL_SEC
     return data

@@ -135,3 +135,27 @@ def test_reader_client_has_short_timeouts():
 def test_reader_uses_shared_bucket(ncp):
     law_data.read_json(law_data.MIN_WAGE_FILE)
     assert law_data._fast_reader is not None and law_data._fast_reader.bucket == "b"
+
+
+def _after(monkeypatch, seconds: float) -> None:
+    now = law_data.time.monotonic()
+    monkeypatch.setattr(law_data.time, "monotonic", lambda: now + seconds)
+
+
+def test_hit_expires_after_cache_ttl_and_refetches(ncp, monkeypatch):
+    """정기 수집으로 버킷이 갱신되면 캐시 시간이 지난 뒤 재시작 없이 반영된다 (#43)."""
+    law_data.read_json(law_data.MIN_WAGE_FILE)
+    ncp.objects[KEY] = {"syncedAt": "new", "items": []}
+    assert law_data.read_json(law_data.MIN_WAGE_FILE) == PAYLOAD  # 캐시 시간 안
+    _after(monkeypatch, law_data.cache_ttl() + 1)
+    assert law_data.read_json(law_data.MIN_WAGE_FILE)["syncedAt"] == "new"
+    assert ncp.calls == 2
+
+
+def test_refetch_failure_keeps_last_bucket_data(ncp, monkeypatch):
+    law_data.read_json(law_data.MIN_WAGE_FILE)
+    ncp.fail = True
+    _after(monkeypatch, law_data.cache_ttl() + 1)
+    assert law_data.read_json(law_data.MIN_WAGE_FILE) == PAYLOAD  # 로컬 사본이 아닌 직전 버킷 값
+    assert law_data.read_json(law_data.MIN_WAGE_FILE) == PAYLOAD  # 실패 기억 중에도 유지
+    assert ncp.calls == 2

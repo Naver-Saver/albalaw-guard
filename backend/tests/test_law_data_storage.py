@@ -173,3 +173,14 @@ def test_upload_storage_requires_ncp_credentials_when_not_injected(tmp_path: Pat
 
     with pytest.raises(ValueError, match="NCP_ACCESS_KEY"):
         sync_common.get_upload_storage()
+
+
+def test_law_search_reload_keeps_index_when_storage_empty(monkeypatch, law_data_dir):
+    from app.services import law_data, law_search
+
+    law_search.load_law_data()
+    before = len(law_search._ordered)
+    assert before
+    monkeypatch.setattr(law_data, "read_json", lambda name: None)
+    law_search.load_law_data(keep_on_empty=True)
+    assert len(law_search._ordered) == before
