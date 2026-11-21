@@ -190,6 +190,30 @@ def search_evidence(query: str | list[str], limit: int = 5, sources: list[str] |
     return [_public(item) for _, item in scored[:limit]]
 
 
+def search_each(keywords: list[str], per_keyword: int = 1, limit: int = 5) -> list[dict]:
+    """키워드마다 따로 검색해 주제가 골고루 나오게 합친다 (중복 제거, 최대 limit개).
+
+    여러 키워드를 한 번에 검색하면 가장 흔한 주제(예: 최저임금)가 결과를 다 차지해서
+    주휴·휴게 같은 다른 주제의 근거가 빠질 수 있다. 서류 점검처럼 항목별 근거가 필요할 때 쓴다.
+    키워드 순서대로 per_keyword 개씩 채운다.
+    """
+    picked: list[dict] = []
+    seen: set[str] = set()
+    for kw in keywords:
+        added = 0
+        for item in search_evidence(kw, limit=per_keyword + len(picked) + 5):
+            if item["id"] in seen:
+                continue
+            picked.append(item)
+            seen.add(item["id"])
+            added += 1
+            if added >= per_keyword or len(picked) >= limit:
+                break
+        if len(picked) >= limit:
+            break
+    return picked[:limit]
+
+
 def get_source(source_id: str) -> dict | None:
     """근거 원문 단건 조회 (출처 클릭용). text는 자르지 않는다."""
     _ensure_loaded()
