@@ -47,6 +47,8 @@
 | API-11 | `GET /qa/search` | 근거(수동 Q&A·법령 조문) 키워드 검색 | FS-06 | DATA | 구현(라우터 등록 대기) |
 | API-12 | `GET /law/sources/{source_id}` | 근거 원문 단건 조회 | FS-06 | DATA | 구현(라우터 등록 대기) |
 | API-13 | `GET /wage/minimum` | 연도별 최저임금 조회 | FS-01 BR-03 | DATA | 구현 |
+| API-14 | `POST /payslips/review` | 급여명세서 점검 | FS-01 BR-14 | DATA | 구현 (라우터 등록 대기) |
+| API-15 | `POST /recordings/evidence` | 대화 발언 근거·말로만 한 약속 안내 | FS-02 BR-15 | DATA | 구현 (라우터 등록 대기) |
 
 ## 주요 요청·응답 예시
 
@@ -87,6 +89,47 @@
 ```
 
 `year` 생략 시 올해 값, 올해 데이터가 없으면 가장 최근 연도로 대체하고 `is_fallback: true`. `year`를 지정했는데 데이터가 없으면 404 `NOT_FOUND`.
+
+### API-14 `POST /payslips/review`
+
+```json
+// 요청 (사용자가 확인·수정한 값. 시급·주 소정근로시간은 알 때만)
+{ "employee_name": "가상인물", "pay_date": "2026-11-10",
+  "items": [ { "name": "기본급", "amount": 900000 } ],
+  "deductions": [ { "name": "국민연금", "amount": 40000 } ],
+  "total_pay": 950000, "net_pay": 910000, "calculation_method": null,
+  "hourly_wage": 9000, "weekly_hours": 20, "year": 2026, "lang": "ko" }
+// 응답 200 (data 안의 내용)
+{ "success": true, "data": {
+  "totals": { "items_sum": 900000, "deductions_sum": 40000, "total_pay": 950000, "net_pay": 910000,
+              "expected_net_pay": 910000, "total_matches": false, "net_matches": true,
+              "mismatches": [ { "field": "totalPay", "expected": 900000, "actual": 950000, "difference": 50000 } ] },
+  "wage": { "year": 2026, "minimum_wage": 10320, "hourly_wage": 9000, "is_below_minimum": true,
+            "shortfall_per_hour": 1320, "weekly_holiday_eligible": true,
+            "weekly_holiday_hours": 4.0, "weekly_holiday_pay": 41280 },
+  "missing": [ { "item": "항목별 계산방법", "field_key": "calculation_method", "source_ids": ["law-003058-27-2"], "conditional": true } ],
+  "items": [ { "level": "check", "title": "지급 항목 합계와 총액이 달라요", "description": "지급 항목을 더하면 900,000원인데 총액은 950,000원이에요. 50,000원 차이가 나니 빠진 항목이 있는지 확인해 보세요." } ],
+  "sources": [ { "id": "manual-022", "title": "급여명세서를 꼭 받아야 하나요?", "snippet": "…", "url": "https://www.law.go.kr/…" } ],
+  "disclaimer": "이 결과는 법률 자문이 아니에요. …" } }
+```
+
+`items`의 문장·금액은 코드 템플릿이 만들고(NFR-08), `lang`이 ko가 아니면 `items`·`disclaimer`만 번역한다. 이름·지급일은 있는지만 확인하고 응답에 돌려주지 않는다.
+
+### API-15 `POST /recordings/evidence`
+
+```json
+// 요청: API-06 타임라인 항목 (최대 50개)
+{ "entries": [ { "start_ms": 12000, "speaker": "화자 B", "text": "이번 달부터 시급 만 원으로 할게", "category": "임금" } ], "lang": "ko" }
+// 응답 200 (data 안의 내용)
+{ "success": true, "data": {
+  "entries": [ { "index": 0, "start_ms": 12000, "verbal_promise": true,
+                 "advice": "말로만 한 조건이에요. 계약서나 문자로 남겨 달라고 요청해 보세요.",
+                 "sources": [ { "id": "manual-005", "title": "…", "snippet": "…", "url": "…" } ] } ],
+  "checklist_for_next_time": [ "시급·근무시간·휴게시간을 계약서에 적어 달라고 요청하세요.", "…" ],
+  "disclaimer": "이 결과는 법률 자문이 아니에요. …" } }
+```
+
+서버에 저장하지 않는다. `lang`이 ko가 아니면 `advice`·`checklist_for_next_time`·`disclaimer`만 번역한다.
 
 ### API-03 `POST /contracts/ocr`
 
@@ -155,4 +198,5 @@ file=@contract.jpg, doc_type=contract
 | --- | --- | --- |
 | 2026-11-20 | 초안 작성 (API-01~11) | #1 |
 | 2026-11-20 | 공통 응답 형식·오류 코드·X-Request-ID 추가 (v0.2) | #8 |
+| 2026-11-21 | API-14(급여명세서 점검)·API-15(대화 발언 근거) 추가 | — |
 | 2026-11-21 | API-11 응답에 `source` 추가·설명 변경, API-12(근거 원문)·API-13(최저임금 조회) 추가 (공통 응답 형식 적용) | #21 |
