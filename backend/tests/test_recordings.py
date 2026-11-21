@@ -389,3 +389,46 @@ def test_recording_reads_result_to_obs_json_and_deletes_it(rec_env):
 
 def test_speech_result_key_respects_prefix():
     assert recordings.speech_result_key("uploads/recordings/a.mp3", "t", "results/") == "results/a.mp3_t.json"
+
+
+def test_recording_waits_for_late_result_json(rec_env, monkeypatch):
+    """COMPLETED 직후 결과 JSON이 아직 없으면 processing 을 유지하고, 생기면 done, 60초 넘으면 failed."""
+    storage, install_transport, _ = rec_env
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
+        if url.endswith("/recognizer/object-storage"):
+            return httpx.Response(200, json={"token": "tok-late", "result": "WAITING"})
+        if url.endswith("/recognizer/tok-late"):
+            return httpx.Response(200, json={"token": "tok-late", "result": "COMPLETED", "segments": "[]"})
+        if "clovastudio" in url:
+            content = json.dumps([{"start_ms": 0, "speaker": "화자 A", "text": "시급", "category": "임금"}])
+            return httpx.Response(
+                200,
+                json={
+                    "status": {"code": "20000"},
+                    "result": {"message": {"role": "assistant", "content": content}},
+                },
+            )
+        return httpx.Response(404)
+
+    install_transport(handler)
+    files = {"file": ("talk.wav", _make_wav_bytes(1.0), "audio/wav")}
+    job_id = client.post("/api/recordings", files=files, data={"consent": "true"}).json()["data"]["job_id"]
+    audio_key = StorageKeys.upload_recording(job_id, "wav")
+    assert client.get(f"/api/recordings/{job_id}").json()["data"]["status"] == "processing"
+    assert storage.exists(audio_key)  # 아직 지우지 않는다
+
+    storage.put_json(
+        recordings.speech_result_key(audio_key, "tok-late"),
+        {"segments": [{"start": 0, "end": 1000, "speaker": {"label": "1"}, "text": "시급은 만 원"}]},
+    )
+    assert client.get(f"/api/recordings/{job_id}").json()["data"]["status"] == "done"
+
+    # 결과 파일이 끝내 없으면 60초 뒤 실패
+    job2 = client.post("/api/recordings", files=files, data={"consent": "true"}).json()["data"]["job_id"]
+    assert client.get(f"/api/recordings/{job2}").json()["data"]["status"] == "processing"
+    now = recordings.time.monotonic()
+    monkeypatch.setattr(recordings.time, "monotonic", lambda: now + recordings.OBS_RESULT_WAIT_SEC + 1)
+    failed = client.get(f"/api/recordings/{job2}").json()["data"]
+    assert failed["status"] == "failed"
