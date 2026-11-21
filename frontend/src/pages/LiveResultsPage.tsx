@@ -8,15 +8,16 @@ import { reviewContract } from '../features/document-review/client'
 import { safeOfficialUrl } from '../features/check-results/sourceUrl'
 import './results.css'
 
-export function LiveResultsPage({ payload, onEdit }: { payload: ReviewRequest; onEdit: () => void }) {
-  const [result, setResult] = useState<ReviewResult | null>(null)
+export function LiveResultsPage({ payload, onEdit, cachedResult, onResult }: { payload: ReviewRequest; onEdit: () => void; cachedResult: ReviewResult | null; onResult: (result: ReviewResult) => void }) {
+  const [result, setResult] = useState<ReviewResult | null>(cachedResult)
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
   useEffect(() => {
+    if (cachedResult) return
     const controller = new AbortController()
-    reviewContract(payload, controller.signal).then(value => { if (!controller.signal.aborted) setResult(value) }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : '서버에 연결하지 못했어요.') })
+    reviewContract(payload, controller.signal).then(value => { if (!controller.signal.aborted) { setResult(value); onResult(value) } }).catch(reason => { if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : '서버에 연결하지 못했어요.') })
     return () => controller.abort()
-  }, [payload, attempt])
+  }, [payload, attempt, cachedResult, onResult])
   if (error) return <StatePanel status="error" title="점검 결과를 가져오지 못했어요" description={error} action={<><Button onClick={() => { setError(''); setResult(null); setAttempt(value => value + 1) }}>다시 시도</Button><Button variant="secondary" onClick={onEdit}>입력 수정</Button></>} />
   if (!result) return <StatePanel status="loading" title="입력한 내용으로 점검하고 있어요" description="서버에서 계산 결과와 공식 근거를 확인하고 있어요." action={<Button variant="secondary" onClick={onEdit}>입력으로 돌아가기</Button>} />
   const calc = result.calculation
