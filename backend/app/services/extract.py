@@ -8,7 +8,7 @@
 import re
 from dataclasses import dataclass
 
-from app.schemas.contracts import ExtractedField, ExtractedFields
+from app.schemas.contracts import ExtractedField, ExtractedFields, PayslipExtracted, PayslipLineExtracted
 
 DAYS = "월화수목금토일"
 _DAY = f"[{DAYS}]"
@@ -16,10 +16,16 @@ _SEP = r"\s*[~\-–—]\s*"
 
 MIN_HOURLY, MAX_HOURLY = 1_000, 100_000
 
+# 표준근로계약서의 "시간(일, 월)급 : 10,320원(해당사항에 ○표)" 처럼 시간·일·월급을 함께 적는 표기는
+# 금액이 시급 범위일 때만 시급으로 보고 confidence=low 로 둔다 (사용자 확인 필요).
+_AMBIGUOUS_WAGE = r"시간\s*[(（][^)）]{0,12}[)）]\s*급"
 _RE_WAGE = re.compile(
-    r"(?:시급|시간급|시간당\s*(?:임금|급여)?)\s*[:：]?\s*(?:금\s*)?"
+    rf"(?P<kw>시\s*급|시간\s*급|시간당\s*(?:임금|급여)?|{_AMBIGUOUS_WAGE})"
+    r"\s*(?:\(\s*원\s*\))?\s*[:：]?\s*(?:금\s*)?"
     r"(?:(?P<man>\d+)\s*만\s*(?P<rest>\d[\d,]*)?|(?P<num>\d[\d,]*))\s*원?"
 )
+_RE_YEAR = re.compile(r"(?P<y>20\d{2})\s*[년.\-/]")
+_YEAR_KEYWORDS = ("근로계약기간", "계약기간", "근로개시", "계약 기간")
 _RE_WEEKLY = re.compile(
     r"(?:1\s*)?주\s*(?:당\s*)?(?:소정\s*)?(?:근로|근무)?\s*(?:시간)?\s*[:：]?\s*(?P<h>\d+(?:\.\d+)?)\s*시간"
 )
@@ -38,6 +44,7 @@ _WORK_KEYWORDS = ("근무", "근로", "업무", "출근")
 class _Found:
     value: object
     source: str
+    confidence: str = "high"
 
 
 def _clean_number(s: str) -> int:
@@ -54,7 +61,27 @@ def find_hourly_wage(lines: list[str]) -> _Found | None:
             else:
                 value = _clean_number(m.group("num"))
             if MIN_HOURLY <= value <= MAX_HOURLY:
-                return _Found(value, m.group(0).strip())
+                ambiguous = "(" in m.group("kw") or "（" in m.group("kw")
+                return _Found(value, m.group(0).strip(), "low" if ambiguous else "high")
+    return None
+
+
+def find_year(lines: list[str]) -> _Found | None:
+    """적용 연도: 근로계약기간 시작 연도(high) → 그 밖의 날짜 연도(low, 작성일 등)."""
+
+    def pick(line: str) -> int | None:
+        m = _RE_YEAR.search(line)
+        return int(m.group("y")) if m and 2000 <= int(m.group("y")) <= 2100 else None
+
+    for line in lines:
+        if any(k in line.replace(" ", "") for k in _YEAR_KEYWORDS):
+            year = pick(line)
+            if year:
+                return _Found(year, line.strip())
+    for line in lines:
+        year = pick(line)
+        if year:
+            return _Found(year, line.strip(), "low")
     return None
 
 
@@ -148,10 +175,12 @@ def find_break_minutes(lines: list[str]) -> _Found | None:
     return None
 
 
-def _field(found: _Found | None, confidence: str = "high") -> ExtractedField:
+def _field(found: _Found | None, confidence: str | None = None) -> ExtractedField:
     if found is None:
         return ExtractedField()
-    return ExtractedField(value=found.value, confidence=confidence, source_text=found.source)
+    return ExtractedField(
+        value=found.value, confidence=confidence or found.confidence, source_text=found.source
+    )
 
 
 def extract_fields(lines: list[str]) -> ExtractedFields:
@@ -176,4 +205,70 @@ def extract_fields(lines: list[str]) -> ExtractedFields:
         weekly_hours=weekly_field,
         work_days=_field(days),
         break_minutes=_field(brk),
+        year=_field(find_year(lines)),
     )
+
+
+# ---- 급여명세서 (doc_type=payslip) ----
+
+_AMOUNT = r"\d{1,3}(?:,\d{3})+|\d{4,}"
+_RE_PAY_PAIR = re.compile(
+    rf"(?P<name>[가-힣A-Za-z][가-힣A-Za-z()·ㆍ\s]{{0,18}}?)\s*[:：]?\s*(?P<amt>{_AMOUNT})\s*원?"
+)
+_DEDUCTION_NAMES = (
+    "국민연금",
+    "건강보험",
+    "장기요양",
+    "고용보험",
+    "산재보험",
+    "소득세",
+    "지방소득세",
+    "주민세",
+    "공제",
+    "가불",
+)
+_TOTAL_PAY = ("지급총액", "지급합계", "임금총액", "총지급액", "급여총액", "지급액계", "총급여")
+_TOTAL_DEDUCTION = ("공제총액", "공제합계", "공제액계", "총공제")
+_NET_PAY = ("실지급액", "차인지급액", "실수령액", "실수령", "차감지급액", "실지급")
+_RE_PAY_DATE = re.compile(r"(?:임금\s*)?지급\s*일(?:자)?\s*[:：]?\s*(?P<v>[0-9][0-9.\-/년월일\s]{3,20})")
+_RE_NAME = re.compile(r"(?:성\s*명|이\s*름|근로자)\s*[:：]\s*(?P<v>[가-힣A-Za-z]{2,20})")
+_RE_METHOD = re.compile(r"(?:계산\s*방법|산출\s*(?:방법|내역|근거))\s*[:：]?\s*(?P<v>.+)")
+
+
+def _compact(s: str) -> str:
+    return re.sub(r"\s+", "", s)
+
+
+def extract_payslip(lines: list[str]) -> PayslipExtracted:
+    """급여명세서 OCR 줄에서 지급·공제 항목과 합계를 읽는다.
+    한 줄에 '항목 금액' 쌍이 여러 개(지급|공제 2단 표) 있어도 각각 읽는다."""
+    lines = [ln.strip() for ln in lines if ln and ln.strip()]
+    out = PayslipExtracted()
+    seen: set[tuple[str, int]] = set()
+    for line in lines:
+        if out.pay_date is None and (m := _RE_PAY_DATE.search(line)):
+            out.pay_date = m.group("v").strip()
+        if out.employee_name is None and (m := _RE_NAME.search(line)):
+            out.employee_name = m.group("v")
+        if out.calculation_method is None and (m := _RE_METHOD.search(line)):
+            out.calculation_method = m.group("v").strip()[:300]
+        if _RE_PAY_DATE.search(line):
+            continue  # 날짜 줄의 숫자를 금액으로 읽지 않는다
+        for m in _RE_PAY_PAIR.finditer(line):
+            name = _compact(m.group("name")).strip("()")
+            amount = int(m.group("amt").replace(",", ""))
+            if len(name) < 2 or (name, amount) in seen:
+                continue
+            seen.add((name, amount))
+            src = m.group(0).strip()
+            if any(k in name for k in _TOTAL_PAY):
+                out.total_pay = ExtractedField(value=amount, confidence="high", source_text=src)
+            elif any(k in name for k in _NET_PAY):
+                out.net_pay = ExtractedField(value=amount, confidence="high", source_text=src)
+            elif any(k in name for k in _TOTAL_DEDUCTION):
+                continue  # 공제 합계는 항목 합으로 검산하므로 따로 받지 않는다
+            elif any(k in name for k in _DEDUCTION_NAMES):
+                out.deductions.append(PayslipLineExtracted(name=name, amount=amount, source_text=src))
+            elif not any(k in name for k in ("시급", "시간", "일수", "연도", "년", "월", "일")):
+                out.items.append(PayslipLineExtracted(name=name, amount=amount, source_text=src))
+    return out
