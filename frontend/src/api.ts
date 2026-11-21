@@ -13,8 +13,9 @@ export class ApiRequestError extends Error {
 export async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, init)
   const body = (await res.json().catch(() => null)) as Envelope<T> | null
-  if (!body) throw new ApiRequestError({ code: 'INTERNAL_ERROR', message: `HTTP ${res.status}` })
+  if (!body || typeof body.success !== 'boolean') throw new ApiRequestError({ code: 'INTERNAL_ERROR', message: `응답을 확인할 수 없어요. HTTP ${res.status}` })
   if (!body.success) throw new ApiRequestError(body.error)
+  if (!res.ok) throw new ApiRequestError({ code: 'INTERNAL_ERROR', message: `HTTP ${res.status}` })
   return body.data
 }
 

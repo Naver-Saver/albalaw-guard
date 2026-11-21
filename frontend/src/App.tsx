@@ -12,7 +12,8 @@ import { DocumentReviewPage } from './pages/DocumentReviewPage'
 import { CheckResultsPage } from './pages/CheckResultsPage'
 import { QuestionPage } from './pages/QuestionPage'
 import { RecordingsPage } from './pages/RecordingsPage'
-import { createReviewSession } from './features/document-review/model'
+import { createReviewSession, createOcrSession } from './features/document-review/model'
+import { LiveResultsPage } from './pages/LiveResultsPage'
 import type { ReviewRequest, ReviewSession } from './features/document-review/model'
 import type { Language } from './features/document-upload/validation'
 
@@ -39,9 +40,9 @@ function Workspace() {
   const activeName = review ? review.document?.file.name ?? '샘플_근로계약서' : documentName
 
   return <AppLayout section={section} onNavigate={navigate} documentName={activeName}>
-    {section === 'upload' ? <DocumentUploadPage onDocumentChange={setDocumentName} onContinue={document => beginReview(createReviewSession('manual', document))} onSample={sampleStart} />
+    {section === 'upload' ? <DocumentUploadPage live onDocumentChange={setDocumentName} onContinue={(document, ocr) => beginReview(ocr ? createOcrSession(document, ocr) : createReviewSession('manual', document))} onSample={sampleStart} />
       : section === 'edit' && review ? <DocumentReviewPage session={review} onChange={next => { setReview(next); setRequest(null) }} onReplace={() => navigate('upload')} onConfirm={payload => { setRequest(payload); setSection('results') }} />
-        : section === 'results' && request ? <CheckResultsPage request={request} onEdit={() => setSection('edit')} onAsk={() => setSection('chat')} />
+        : section === 'results' && request ? review?.mode === 'sample' ? <CheckResultsPage request={request} onEdit={() => setSection('edit')} onAsk={() => setSection('chat')} /> : <LiveResultsPage payload={request} onEdit={() => setSection('edit')} />
           : section === 'chat' ? <QuestionPage onBack={request ? () => setSection('results') : undefined} />
           : section === 'recordings' ? <RecordingsPage />
           : section === 'edit' || section === 'results' ? <StatePanel status="empty" title="확인할 문서를 준비해 주세요" description="문서를 선택해 직접 입력하거나 샘플 OCR 응답으로 체험할 수 있어요." action={<div className="review-empty-actions"><Button onClick={() => navigate('upload')}>문서 선택하기</Button><Button variant="secondary" onClick={() => sampleStart()}>샘플 문서로 체험하기</Button></div>} />

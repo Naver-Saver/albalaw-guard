@@ -80,7 +80,7 @@ test('manual review keeps the uploaded file and never presents sample numbers as
   assert.equal(session.language, 'vi')
   const html = renderToStaticMarkup(createElement(DocumentReviewPage, { session, onChange: () => {}, onReplace: () => {}, onConfirm: () => {} }))
   assert.match(html, /직접 입력/)
-  assert.match(html, /자동으로 읽어낸 값은 없으며/)
+  assert.match(html, /원본을 보고 직접 입력해 주세요/)
   assert.match(html, /급여명세서/)
   assert.doesNotMatch(html, /value="10000"/)
 })
