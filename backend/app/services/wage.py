@@ -6,11 +6,9 @@ CLOVA Studio는 이 계산 결과를 '설명'만 한다.
 
 from dataclasses import dataclass
 
-# 연도별 최저임금(시간급, 원). 매년 고용노동부 고시 확정 후 추가한다.
-MINIMUM_WAGE_BY_YEAR: dict[int, dict[str, str | int]] = {
-    2026: {"hourly": 10_320, "notice": "고용노동부 고시 (2026년 적용분)"},
-    2027: {"hourly": 10_700, "notice": "고용노동부 고시 제2026-60호"},
-}
+from app.services.calc import WageYearNotFound, get_min_wage
+
+# 최저임금 금액은 law-data/min-wage.json(sync.wage)에서만 읽는다 (BR-03). 코드에 금액을 두지 않는다.
 
 WEEKLY_HOLIDAY_MIN_HOURS = 15  # 주 소정근로시간 15시간 이상이면 주휴수당 대상
 FULL_TIME_WEEKLY_HOURS = 40
@@ -32,10 +30,11 @@ class WageCheckResult:
 
 
 def minimum_wage(year: int) -> tuple[int, str]:
-    if year not in MINIMUM_WAGE_BY_YEAR:
-        raise ValueError(f"{year}년 최저임금 데이터가 없습니다.")
-    entry = MINIMUM_WAGE_BY_YEAR[year]
-    return int(entry["hourly"]), str(entry["notice"])
+    try:
+        entry = get_min_wage(year)
+    except WageYearNotFound as e:
+        raise ValueError(str(e)) from e
+    return int(entry["hourlyWage"]), f"고용노동부 최저임금 고시 ({year}년 적용분)"
 
 
 def weekly_holiday_hours(weekly_hours: float) -> float:

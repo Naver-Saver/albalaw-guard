@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from sync.wage import build_payload, main, parse_min_wage_csv
+from sync.wage import ANNOUNCED_CSV, build_payload, main, merge_announced, parse_min_wage_csv
 
 FIXTURE = Path(__file__).parent / "fixtures" / "min_wage_sample.csv"
 
@@ -48,3 +48,28 @@ def test_dry_run_writes_file(tmp_path, monkeypatch):
     monkeypatch.setattr("sync.wage.DRY_RUN_DIR", tmp_path)
     assert main(["--csv", str(FIXTURE), "--dry-run"]) == 0
     assert (tmp_path / "min-wage.json").exists()
+
+
+def test_merge_announced_adds_missing_year_only(tmp_path):
+    official = parse_min_wage_csv(FIXTURE)
+    p = tmp_path / "announced.csv"
+    p.write_text("순번,연도,시간급\n1,2027,10700\n2,2026,1\n", encoding="utf-8")
+    merged = merge_announced(official, parse_min_wage_csv(p))
+    assert merged[0] == {
+        "year": 2027,
+        "hourlyWage": 10700,
+        "periodStart": "2027-01-01",
+        "periodEnd": "2027-12-31",
+    }
+    # 공공데이터 CSV에 있는 연도는 보충분으로 덮어쓰지 않는다
+    assert next(i for i in merged if i["year"] == 2026)["hourlyWage"] != 1
+
+
+def test_announced_csv_in_repo_is_valid():
+    items = parse_min_wage_csv(ANNOUNCED_CSV)
+    assert {
+        "year": 2027,
+        "hourlyWage": 10700,
+        "periodStart": "2027-01-01",
+        "periodEnd": "2027-12-31",
+    } in items
