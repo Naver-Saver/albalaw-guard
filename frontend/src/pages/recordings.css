@@ -1,0 +1,29 @@
+.recordings-heading { display:flex; justify-content:space-between; gap:20px; align-items:flex-start; margin-bottom:24px; }
+.recordings-heading h1 { margin:0; font-size:clamp(1.5rem,2.2vw,1.875rem); }
+.recordings-heading > div > p:last-child { color:var(--color-secondary-text); font-size:.875rem; line-height:1.8; }
+.recordings-notice { background:#fffbef; border:1px solid #e6d8aa; border-radius:12px; color:#805817; padding:16px 20px; font-size:.875rem; line-height:1.8; margin-bottom:24px; }
+.recordings-notice p { margin:4px 0 0; }
+.recordings-layout { display:grid; grid-template-columns:minmax(0, .9fr) minmax(0, 1.1fr); gap:24px; align-items:start; }
+.recordings-column { display:grid; gap:24px; min-width:0; }
+.recordings-file { display:block; border:2px dashed #b7cbbd; border-radius:12px; padding:32px 15px; text-align:center; cursor:pointer; color:var(--color-primary-text); font-weight:600; }
+#recording-file { display:block; width:100%; margin-top:12px; font:inherit; font-size:.8125rem; }
+.recordings-selected { display:flex; justify-content:space-between; align-items:center; gap:12px; overflow-wrap:anywhere; margin-top:12px; }
+.recordings-hint, .recordings-empty, .recordings-transcript p { color:var(--color-secondary-text); font-size:.8125rem; line-height:1.8; }
+.recordings-error { color:#b3442c; font-size:.875rem; }
+.recordings-consent, .recordings-filter { display:flex; align-items:flex-start; gap:10px; font-size:.875rem; line-height:1.8; margin:18px 0; }
+.recordings-consent input, .recordings-filter input { margin-top:5px; accent-color:var(--color-primary-text); }
+.recordings-actions { display:flex; flex-wrap:wrap; gap:10px; }
+.speaker-fields { display:grid; gap:12px; }
+.speaker-fields label { display:grid; gap:6px; font-size:.875rem; }
+.speaker-fields input { width:100%; padding:10px; border:1px solid #aebfb3; border-radius:8px; font:inherit; }
+.recordings-empty { text-align:center; padding:35px 10px; }
+.recordings-timeline { list-style:none; padding:0; margin:20px 0; border-left:2px solid #d6e9dd; }
+.recordings-timeline li { margin-left:20px; padding:0 0 24px; overflow-wrap:anywhere; }
+.recordings-timeline li > div { display:flex; gap:12px; align-items:center; margin-bottom:8px; }
+.recordings-timeline time { color:var(--color-primary-text); font-size:.8125rem; font-weight:600; }
+.recordings-timeline strong { font-size:.875rem; }
+.recordings-timeline p { margin:8px 0 0; line-height:1.8; }
+.recordings-transcript { border-top:1px solid var(--color-border); padding-top:18px; }
+.recordings-transcript summary { cursor:pointer; font-weight:600; }
+@media(max-width:900px) { .recordings-layout { grid-template-columns:1fr; } }
+@media(max-width:700px) { .recordings-heading { flex-direction:column; } .recordings-actions .button { width:100%; } }
