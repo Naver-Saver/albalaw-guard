@@ -4,8 +4,10 @@ import { Card } from '../components/common/Card'
 import { Checkbox, InputField } from '../components/common/FormControls'
 import { Badge } from '../components/common/Status'
 import { Icon } from '../components/common/Icon'
-import { WEEKDAYS, canConfirmReview, editReviewSession, toReviewRequest, validateReviewDraft } from '../features/document-review/model'
-import type { ReviewDraft, ReviewRequest, ReviewSession } from '../features/document-review/model'
+import { WEEKDAYS, canConfirmReview, editReviewSession, extractedFor, toReviewRequest, validateReviewDraft } from '../features/document-review/model'
+import type { DraftField, ReviewDraft, ReviewRequest, ReviewSession } from '../features/document-review/model'
+import { fetchMinimumWage } from '../features/law/client'
+import type { MinimumWage } from '../features/law/client'
 import { useObjectUrl } from '../features/document-upload/useObjectUrl'
 import { createPreviewBlob } from '../features/document-upload/previewBlob'
 import './review.css'
@@ -29,20 +31,35 @@ export function DocumentReviewPage({ session, onChange, onReplace, onConfirm }: 
     setPreviewFile(session.document ? createPreviewBlob(session.document.file, session.document.kind) : null)
   }, [session.document, setPreviewFile])
 
+  // 적용 연도의 고시 최저시급을 시급 입력란 아래에 함께 보여준다 (API-13). 샘플 체험은 요청하지 않는다.
+  const [minimum, setMinimum] = useState<MinimumWage | null>(null)
+  const yearValue = /^\d{4}$/.test(draft.year.trim()) ? Number(draft.year.trim()) : null
+  useEffect(() => {
+    if (session.mode === 'sample' || !yearValue) return
+    const controller = new AbortController()
+    fetchMinimumWage(yearValue, controller.signal).then(value => { if (!controller.signal.aborted) setMinimum(value) }).catch(() => { if (!controller.signal.aborted) setMinimum(null) })
+    return () => controller.abort()
+  }, [session.mode, yearValue])
+  const minimumHint = minimum && minimum.year === yearValue ? ` · ${minimum.year}년 최저시급 ${minimum.hourly_wage.toLocaleString('ko-KR')}원` : ''
+
   function update(patch: Partial<ReviewDraft>) {
     onChange(editReviewSession(session, { ...draft, ...patch }))
     setNotice('')
   }
 
-  function fieldBadge(field: keyof Omit<ReviewDraft, 'year'>) {
+  function fieldBadge(field: DraftField) {
     const changed = JSON.stringify(draft[field]) !== JSON.stringify(session.initialDraft[field])
     if (changed) return <Badge tone="success">직접 수정</Badge>
-    if (!ocr) return <Badge>직접 입력</Badge>
-    return ocr.extracted[field].confidence === 'low' ? <Badge tone="warning">확인 필요</Badge> : <Badge>추출된 값</Badge>
+    const extracted = extractedFor(ocr, field)
+    if (!ocr || !extracted) return <Badge>직접 입력</Badge>
+    if (extracted.value === null || extracted.value === undefined) return <Badge tone="warning">찾지 못함 · 입력 필요</Badge>
+    return extracted.confidence === 'low' ? <Badge tone="warning">자동 입력 · 확인 필요</Badge> : <Badge>자동 입력됨</Badge>
   }
 
-  function sourceHint(field: keyof Omit<ReviewDraft, 'year'>, fallback: string) {
-    return ocr?.extracted[field].source_text ? `${session.mode === 'sample' ? '샘플 원문' : 'OCR 원문'}: ${ocr.extracted[field].source_text}` : fallback
+  // 입력란 바로 아래에 '문서의 어느 문구에서 읽었는지'를 보여준다. 값은 이미 입력란에 들어가 있다.
+  function sourceHint(field: DraftField, fallback: string) {
+    const source = extractedFor(ocr, field)?.source_text
+    return source ? `${session.mode === 'sample' ? '샘플 원문' : '문서에서 읽은 부분'}: “${source}”` : fallback
   }
 
   return <>
@@ -68,11 +85,11 @@ export function DocumentReviewPage({ session, onChange, onReplace, onConfirm }: 
           onConfirm(toReviewRequest(session))
         }}>
           <div className="review-fields">
-            <div className="review-field"><div className="review-field__badge">{fieldBadge('hourly_wage')}</div><InputField ref={wageRef} label="시급 (원)" inputMode="numeric" value={draft.hourly_wage} onChange={event => update({ hourly_wage: event.target.value })} error={errors.hourly_wage} hint={sourceHint('hourly_wage', '문서에 적힌 시급을 원 단위로 입력해 주세요.')} required /></div>
+            <div className="review-field"><div className="review-field__badge">{fieldBadge('hourly_wage')}</div><InputField ref={wageRef} label="시급 (원)" inputMode="numeric" value={draft.hourly_wage} onChange={event => update({ hourly_wage: event.target.value })} error={errors.hourly_wage} hint={sourceHint('hourly_wage', '문서에 적힌 시급을 원 단위로 입력해 주세요.') + minimumHint} required /></div>
             <div className="review-field"><div className="review-field__badge">{fieldBadge('weekly_hours')}</div><InputField ref={hoursRef} label="주 소정근로시간 (시간)" inputMode="decimal" value={draft.weekly_hours} onChange={event => update({ weekly_hours: event.target.value })} error={errors.weekly_hours} hint={sourceHint('weekly_hours', '주 단위 근무시간을 입력해 주세요. 예: 20, 25.5')} required /></div>
             <fieldset className="review-days"><legend>근무요일 (선택)</legend><div className="review-days__badge">{fieldBadge('work_days')}</div><div className="review-days__options">{WEEKDAYS.map(day => <label key={day}><input type="checkbox" checked={draft.work_days.includes(day)} onChange={event => update({ work_days: event.target.checked ? WEEKDAYS.filter(value => value === day || draft.work_days.includes(value)) : draft.work_days.filter(value => value !== day) })} /><span>{day}</span></label>)}</div><p>{sourceHint('work_days', '문서에 근무요일이 적혀 있다면 선택해 주세요.')}</p>{errors.work_days && <p className="field__hint--error">{errors.work_days}</p>}</fieldset>
             <div className="review-field"><div className="review-field__badge">{fieldBadge('break_minutes')}</div><InputField ref={breakRef} label="하루 휴게시간 (분, 선택)" inputMode="numeric" value={draft.break_minutes} onChange={event => update({ break_minutes: event.target.value })} error={errors.break_minutes} hint={sourceHint('break_minutes', '문서에 없거나 확실하지 않다면 비워 두세요. 0분과 미입력은 구분해요.')} /></div>
-            <InputField ref={yearRef} label="적용 연도" inputMode="numeric" value={draft.year} onChange={event => update({ year: event.target.value })} error={errors.year} hint="문서에 적용되는 연도를 확인해 주세요." required />
+            <div className="review-field"><div className="review-field__badge">{fieldBadge('year')}</div><InputField ref={yearRef} label="적용 연도" inputMode="numeric" value={draft.year} onChange={event => update({ year: event.target.value })} error={errors.year} hint={sourceHint('year', '문서에 적용되는 연도를 확인해 주세요.')} required /></div>
           </div>
           <div className="review-confirm"><Checkbox ref={consentRef} label="원본과 입력 내용을 비교하고, 맞는지 확인했습니다." checked={session.confirmed} disabled={imageFailed} onChange={event => onChange({ ...session, confirmed: event.target.checked })} /><p>내용을 바꾸면 확인 동의가 초기화돼요. 수정 후 다시 확인해 주세요.</p></div>
           <Button type="submit" className="review-submit" disabled={!ready}>{session.mode === 'sample' ? '수정 내용으로 점검 (체험)' : '확인한 내용으로 점검하기'}</Button><p className="review-submit-hint">{session.mode === 'sample' ? '실제 점검 요청은 전송하지 않아요. 확인한 입력값만 다음 화면에서 보여줘요.' : '확인한 입력값을 서버로 전송해 계산과 설명을 요청해요.'}</p><div role="alert">{notice}</div>

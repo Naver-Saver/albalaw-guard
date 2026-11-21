@@ -87,7 +87,6 @@ export function DocumentUploadPage({ onDocumentChange, onContinue, onSample, liv
     requestRef.current = controller
     setStatus('loading')
     try {
-      if (live && docType !== 'contract') { setError('급여명세서 전용 점검은 아직 연결 준비 중이에요. 근로계약서를 선택해 주세요.'); setStatus('idle'); return }
       const ocr = live ? await extractDocument({ file, kind, docType, language }, controller.signal) : (await simulateExtraction(controller.signal), undefined)
       if (requestRef.current === controller) {
         setStatus('done')
