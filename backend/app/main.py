@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import contracts, health, law, recordings, wage
+from app.api.routes import contracts, evidence, health, law, payslips, recordings, translate, wage
 from app.core.config import get_settings
 from app.core.logging import setup_logging
 from app.core.middleware import REQUEST_ID_HEADER, RequestContextMiddleware
@@ -39,3 +39,6 @@ app.include_router(wage.router, prefix="/api")
 app.include_router(contracts.router, prefix="/api")
 app.include_router(law.router, prefix="/api")
 app.include_router(recordings.router, prefix="/api")
+app.include_router(evidence.router, prefix="/api")
+app.include_router(payslips.router, prefix="/api")
+app.include_router(translate.router, prefix="/api")
