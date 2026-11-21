@@ -20,6 +20,6 @@ test('initial screen explains sample status and requires file and consent for th
   const html = renderToStaticMarkup(createElement(RecordingsPage))
   assert.match(html, /전송하거나 분석하지 않아요/)
   assert.match(html, /선택한 파일과 관계없는 고정 샘플/)
-  assert.match(html, /disabled=""[^>]*>샘플 결과 보기/)
+  assert.match(html, /disabled=""[^>]*>녹음 정리 요청/)
   assert.match(html, /파일 없이 샘플 보기/)
 })
