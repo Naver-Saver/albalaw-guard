@@ -15,8 +15,8 @@ def set_transport(transport: httpx.AsyncBaseTransport | None) -> None:
     _transport = transport
 
 
-async def post_with_retry(
-    service: str, url: str, *, timeout: float, retries: int = 1, **kwargs
+async def request_with_retry(
+    method: str, service: str, url: str, *, timeout: float, retries: int = 1, **kwargs
 ) -> httpx.Response:
     """성공(2xx)·클라이언트 오류(4xx) 응답은 그대로 반환하고, 타임아웃·5xx만 재시도한다.
 
@@ -26,7 +26,7 @@ async def post_with_retry(
     for attempt in range(retries + 1):
         try:
             async with httpx.AsyncClient(timeout=timeout, transport=_transport) as client:
-                res = await client.post(url, **kwargs)
+                res = await client.request(method, url, **kwargs)
             if res.status_code < 500:
                 return res
             logger.warning("%s upstream %s (attempt %d)", service, res.status_code, attempt + 1)
@@ -38,3 +38,17 @@ async def post_with_retry(
             last_exc = e
     assert last_exc is not None
     raise last_exc
+
+
+async def post_with_retry(
+    service: str, url: str, *, timeout: float, retries: int = 1, **kwargs
+) -> httpx.Response:
+    """POST 요청에 대한 공통 재시도 래퍼."""
+    return await request_with_retry("POST", service, url, timeout=timeout, retries=retries, **kwargs)
+
+
+async def get_with_retry(
+    service: str, url: str, *, timeout: float, retries: int = 1, **kwargs
+) -> httpx.Response:
+    """GET 요청에 대한 공통 재시도 래퍼."""
+    return await request_with_retry("GET", service, url, timeout=timeout, retries=retries, **kwargs)

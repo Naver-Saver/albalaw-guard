@@ -864,6 +864,23 @@ components:
             $ref: '#/components/schemas/Source'
         disclaimer:
           type: string
+    SpeechSegmentEntry:
+      type: object
+      required:
+      - start_ms
+      - end_ms
+      - speaker
+      - text
+      properties:
+        start_ms:
+          type: integer
+        end_ms:
+          type: integer
+        speaker:
+          type: string
+          example: 화자 A
+        text:
+          type: string
     TimelineEntry:
       type: object
       required:
@@ -906,10 +923,18 @@ components:
           type:
           - string
           - 'null'
+        duration_sec:
+          type:
+          - integer
+          - 'null'
         speakers:
           type: array
           items:
             type: string
+        segments:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpeechSegmentEntry'
         timeline:
           type: array
           items:
