@@ -120,7 +120,7 @@ async def _read_upload_with_limit(file: UploadFile, max_bytes: int) -> bytes:
             break
         total += len(chunk)
         if total > max_bytes:
-            raise FileTooLargeError("50MB 이하 파일만 올릴 수 있어요.")
+            raise FileTooLargeError(f"{max_bytes // (1024 * 1024)}MB 이하 파일만 올릴 수 있어요.")
         chunks.append(chunk)
     return b"".join(chunks)
 

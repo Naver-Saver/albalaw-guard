@@ -241,7 +241,7 @@ paths:
                 file:
                   type: string
                   format: binary
-                  description: m4a/mp3/wav, 50MB 이하
+                  description: m4a/mp3/wav, 200MB 이하
                 consent:
                   type: boolean
                   description: 녹음 관련 주의 문구 동의 (true만 허용)

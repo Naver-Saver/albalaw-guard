@@ -24,7 +24,8 @@ cp "$SRC/infra/docker-compose.prod.yml" "$APP/docker-compose.yml"
 printf 'IMAGE_REGISTRY=%s\nIMAGE_TAG=%s\n' "$REGISTRY" "$TAG" > "$APP/.env"
 touch "$APP/backend.env"
 cd "$APP" && docker compose up -d --remove-orphans --pull never
-docker image prune -f >/dev/null
+docker image prune -af >/dev/null
+docker builder prune -af >/dev/null
 echo "deployed $TAG"
 REMOTE
 
