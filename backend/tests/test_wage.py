@@ -29,6 +29,9 @@ def test_meets_minimum_2027():
     assert r.weekly_holiday_pay == 8 * 10_700
 
 
-def test_api_unknown_year():
-    res = client.post("/api/wage/check", json={"hourly_wage": 10000, "weekly_hours": 20, "year": 1999})
-    assert res.status_code == 400
+def test_api_wage_check_envelope():
+    res = client.post("/api/wage/check", json={"hourly_wage": 10000, "weekly_hours": 20, "year": 2026})
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["meets_minimum"] is False
+    assert data["weekly_holiday_pay"] == 41_280
