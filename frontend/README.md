@@ -14,7 +14,7 @@ npm.cmd run dev
 
 터미널에 표시된 개발 서버 주소를 엽니다(기본 `http://localhost:5173`). Windows PowerShell에서 `npm.ps1` 실행 정책 오류를 피하려면 위처럼 `npm.cmd`를 사용하면 됩니다. macOS/Linux에서는 `npm`을 사용합니다.
 
-백엔드는 별도 터미널에서 루트 README의 방법으로 실행합니다. Vite가 `/api` 요청을 `http://localhost:8000`으로 전달하므로 백엔드가 실행 중이어야 서버 상태가 정상으로 표시됩니다. 화면 퍼블리싱 자체는 백엔드 없이도 가능합니다.
+백엔드는 별도 터미널에서 루트 README의 방법으로 실행합니다. Vite가 `/api` 요청을 `http://localhost:8000`으로 전달합니다. 현재 공통 UI 미리보기는 API를 호출하지 않아 백엔드 없이도 확인할 수 있습니다.
 
 ```powershell
 npm.cmd run lint
@@ -29,11 +29,13 @@ npm.cmd run preview
 | 경로 | 역할 |
 | --- | --- |
 | `src/main.tsx` | React 진입점과 전역 스타일 로드 |
-| `src/App.tsx` | 기존 서비스 소개·서버 상태 화면 |
+| `src/App.tsx` | 작업 레이아웃과 공통 UI 미리보기 연결 |
+| `src/components/common/` | 버튼·폼·카드·배지·화면 상태 공통 요소 |
+| `src/components/layout/` | 헤더·사이드바·모바일 메뉴 |
+| `src/pages/CommonUiPreview.tsx` | 공통 요소의 상태와 입력 동작을 확인하는 예시 화면 |
 | `src/api.ts` | 백엔드 호출 코드 |
 | `src/styles/tokens.css` | 공통 색상·폰트·모서리 변수 |
 | `src/styles/global.css` | 로컬 폰트와 기본 스타일 |
-| `src/index.css` | 기존 시작 화면 스타일 |
 | `src/assets/fonts/` | Noto Sans KR 가변 폰트 |
 | `public/fonts/OFL.txt` | 배포 파일에도 포함되는 폰트 라이선스 |
 | `../docs/design/` | 원본 와이어프레임과 해석 기준 |

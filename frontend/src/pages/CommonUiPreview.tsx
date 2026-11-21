@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '../components/common/Button'
 import { Card } from '../components/common/Card'
 import { Checkbox, InputField, SelectField } from '../components/common/FormControls'
@@ -16,16 +16,17 @@ export function CommonUiPreview() {
   const [state, setState] = useState<PreviewState>('empty')
   const nameRef = useRef<HTMLInputElement>(null)
   const error = submitted && !name.trim() ? '문서 이름을 입력해 주세요.' : undefined
-  useEffect(() => {
-    if (error) nameRef.current?.focus()
-  }, [error])
 
   return <>
     <div className="page-heading"><div><p className="eyebrow">SAVER WORKSPACE</p><h1>작은 확인이, 든든한 시작이 되도록</h1><p>내 문서를 이해하고 권리를 확인하는 공간을 준비하고 있어요.</p></div><span className="heading-icon"><Icon name="shield" width="30" height="30" /></span></div>
     <div className="preview-notice"><Icon name="info" /><p><strong>공통 UI 미리보기</strong><span>메뉴와 입력 요소를 눌러보세요. 표시된 내용은 예시이며 문서가 업로드되거나 저장되지 않아요.</span></p></div>
     <div className="preview-grid">
       <Card title="익숙한 언어로 시작해요" description="입력창 · 선택창 · 동의 체크" action={<Badge>입력 요소</Badge>}>
-        <form onSubmit={event => { event.preventDefault(); setSubmitted(true) }} noValidate>
+        <form onSubmit={event => {
+          event.preventDefault()
+          setSubmitted(true)
+          if (!name.trim()) requestAnimationFrame(() => nameRef.current?.focus())
+        }} noValidate>
           <div className="form-stack">
             <SelectField label="안내받을 언어" value={language} onChange={event => setLanguage(event.target.value)} hint="선택 상태를 확인하는 미리보기예요. 실제 번역은 추후 제공돼요."><option value="ko">한국어 · Korean</option><option value="en">English · 영어</option><option value="vi">Tiếng Việt · 베트남어</option><option value="zh-CN">中文 · 중국어</option></SelectField>
             <InputField ref={nameRef} label="문서 이름" placeholder="예: 첫 아르바이트 근로계약서" value={name} onChange={event => { setName(event.target.value); setSubmitted(false) }} required maxLength={100} error={error} hint="알아보기 쉬운 이름을 입력해 보세요." />
