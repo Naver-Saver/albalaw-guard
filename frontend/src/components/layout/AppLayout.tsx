@@ -26,7 +26,7 @@ export function AppLayout({ section, onNavigate, children, documentName }: { sec
         <div className="sidebar__label">WORKSPACE</div>
         <nav aria-label="작업 메뉴">{workspaceNavigation.map(item => <button key={item.id} className="nav-item" type="button" aria-current={item.id === section ? 'page' : undefined} onClick={() => { onNavigate(item.id); setMenuOpen(false); mainRef.current?.focus() }}><Icon name={item.icon} /><span>{item.label}</span></button>)}</nav>
         <div className="sidebar__document"><span className="sidebar__label">진행 중인 문서</span><div className="sidebar__document-icon"><Icon name="file" /></div><strong className="sidebar__filename">{documentName || '문서를 올려주세요'}</strong><p>{documentName ? '기기에서만 미리보기 중' : '새 문서를 기다리고 있어요'}</p></div>
-        <a className="sidebar__guide" href="#/guide"><Icon name="info" /><span><strong>처음이라면, 이용 안내</strong><small>이용 방법을 차근차근 살펴보세요.</small></span></a>
+        <a className="sidebar__guide" href="#/guide"><Icon name="info" /><span><strong>서명 전, 계약서 체크</strong><small>계약서 작성 전 확인사항을 알아보세요.</small></span></a>
         <div className="sidebar__privacy"><Icon name="shield" /><p>내 문서는 안전하게<br /><strong>처리 후 원본을 보관하지 않아요.</strong></p></div>
         <p className="sidebar__footer">Saver · 함께 지키는 일의 권리</p>
       </aside>

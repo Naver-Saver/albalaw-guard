@@ -81,6 +81,9 @@
 .guide-text strong { font-size: .875rem; color: var(--color-primary-text); }
 .guide-text li span { font-size: .875rem; color: var(--color-secondary-text); }
 .guide-actions { display: flex; justify-content: center; gap: 12px; margin-top: 32px; }
+.education-source, .education-note { font-size: .8125rem; line-height: 1.9; color: var(--color-secondary-text); }
+.education-source { margin-top: 24px; }
+.education-source a { color: var(--color-primary-text); text-underline-offset: 3px; }
 .sidebar__guide { display: flex; align-items: flex-start; gap: 10px; padding: 16px 12px; border-radius: 10px; border: 1px solid var(--color-border); text-decoration: none; color: var(--color-primary-text); margin-bottom: 20px; }
 .sidebar__guide > svg { flex-shrink: 0; margin-top: 2px; }
 .sidebar__guide strong { font-size: .8125rem; }
