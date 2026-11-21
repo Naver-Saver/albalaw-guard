@@ -47,7 +47,7 @@ gh secret set BACKEND_ENV -R Naver-Saver/albalaw-guard < backend/.env.prod   # �
 ## 3. 배포 확인
 
 - Actions → CD 실행 결과의 **Smoke test** 단계 통과
-- 브라우저에서 http://101.79.9.131 접속
+- 브라우저에서 https://101.79.9.131 접속 (http로 들어오면 https로 넘어감)
 
 ## 4. CD 없이 수동 배포
 
@@ -93,3 +93,23 @@ ssh -i ../.deploy/albalaw_deploy root@101.79.9.131 'docker exec albalaw-guard-ba
 
 수집이 실패해도 Object Storage의 기존 파일은 그대로 남는다(단계별로 성공한 것만 덮어씀).
 
+## 8. HTTPS (Let's Encrypt IP 인증서)
+
+브라우저는 HTTPS(보안 컨텍스트)에서만 마이크 녹음(`getUserMedia`)을 허용한다. 도메인이 없으므로 서버 공인 IP에 Let's Encrypt IP 인증서를 받아 `https://101.79.9.131`로 서비스한다.
+
+| 항목 | 내용 |
+| --- | --- |
+| 인증서 | Let's Encrypt `shortlived` 프로필 IP 인증서(유효 약 6일). 도구는 acme.sh |
+| 발급·갱신 | `infra/tls/setup-ip-cert.sh` — CD가 배포 때마다 서버에 복사해 실행. 처음이면 발급, 이후엔 acme.sh cron(매일)이 3일마다 갱신 |
+| 검증 | HTTP-01 webroot. 서버 `/opt/albalaw-guard/acme-webroot`를 프론트 Nginx가 `/.well-known/acme-challenge/`로 서빙 (80번 포트 필요) |
+| 인증서 위치 | 서버 `/opt/albalaw-guard/certs/{fullchain,privkey}.pem` → 프론트 컨테이너 `/etc/nginx/certs` (읽기 전용) |
+| Nginx 설정 | `frontend/nginx/http.conf`(인증서 없을 때), `frontend/nginx/https.conf`(있을 때). 컨테이너 시작과 갱신 직후 `40-albalaw-tls.sh`가 골라 `nginx -s reload` |
+| 동작 | 80 → 443 리다이렉트(인증 경로 제외), 443은 HTTP/2·TLS 1.2/1.3 |
+
+인증서 발급이 실패해도 서비스는 HTTP로 계속 동작하고, CD에는 경고만 남는다. 수동 확인·재발급:
+
+```bash
+ssh -i ../.deploy/albalaw_deploy root@101.79.9.131 '~/.acme.sh/acme.sh --list; bash /opt/albalaw-guard/setup-ip-cert.sh 101.79.9.131'
+```
+
+로컬 `docker compose`는 인증서가 없으므로 HTTP(http://localhost:8080)로 동작하며, localhost는 브라우저가 보안 컨텍스트로 취급해 마이크도 쓸 수 있다.

@@ -22,16 +22,19 @@ docker build -q -t "$REGISTRY/albalaw-backend:$TAG" "$SRC/backend" >/dev/null
 docker build -q -t "$REGISTRY/albalaw-frontend:$TAG" "$SRC/frontend" >/dev/null
 cp "$SRC/infra/docker-compose.prod.yml" "$APP/docker-compose.yml"
 install -m 644 "$SRC/infra/cron/albalaw-sync" /etc/cron.d/albalaw-sync
+install -m 755 "$SRC/infra/tls/setup-ip-cert.sh" "$APP/setup-ip-cert.sh"
+mkdir -p "$APP/certs" "$APP/acme-webroot"
 printf 'IMAGE_REGISTRY=%s\nIMAGE_TAG=%s\n' "$REGISTRY" "$TAG" > "$APP/.env"
 touch "$APP/backend.env"
 cd "$APP" && docker compose up -d --remove-orphans --pull never
 docker image prune -af >/dev/null
 docker builder prune -af >/dev/null
+bash "$APP/setup-ip-cert.sh" || echo "HTTPS 인증서 발급 실패 — HTTP로 계속 서비스" >&2
 echo "deployed $TAG"
 REMOTE
 
 for i in $(seq 1 10); do
-  if curl -fsS "http://$HOST/api/health"; then echo; exit 0; fi
+  if curl -fsS "https://$HOST/api/health" || curl -fsS "http://$HOST/api/health"; then echo; exit 0; fi
   sleep 3
 done
 echo "헬스체크 실패" >&2; exit 1

@@ -28,9 +28,17 @@ export async function startMicrophone(onFinished: (file: File | null) => void) {
   const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
   let context: AudioContext | undefined
   try {
-    context = new AudioContext({ sampleRate: 16000 })
+    // 16kHz를 먼저 쓰고, 마이크와 샘플레이트가 다른 컨텍스트 연결을 막는 브라우저(Firefox)에서는 기본값으로 다시 연다.
+    let input: MediaStreamAudioSourceNode
+    try {
+      context = new AudioContext({ sampleRate: 16000 })
+      input = context.createMediaStreamSource(stream)
+    } catch {
+      if (context && context.state !== 'closed') await context.close()
+      context = new AudioContext()
+      input = context.createMediaStreamSource(stream)
+    }
     await context.resume()
-    const input = context.createMediaStreamSource(stream)
     const processor = context.createScriptProcessor(4096, 1, 1)
     let chunks: Float32Array[] = []; let length = 0; let closed = false
     const rate = context.sampleRate
