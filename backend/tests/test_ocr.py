@@ -67,6 +67,19 @@ def test_ocr_endpoint_ok(settings, mock_transport):
     assert data["extracted"]["hourly_wage"]["value"] == 10_000
     assert data["extracted"]["work_days"]["value"] == ["월", "화", "수", "목", "금"]
 
+    assert data["payslip"] is None  # 계약서는 급여명세서 항목을 내려주지 않는다
+
+
+def test_ocr_payslip_returns_payslip_fields(settings, mock_transport):
+    mock_transport(lambda r: httpx.Response(200, json=OCR_BODY))
+    res = client.post(
+        "/api/contracts/ocr", files={"file": ("p.png", b"img", "image/png")}, data={"doc_type": "payslip"}
+    )
+    assert res.status_code == 200
+    data = res.json()["data"]
+    assert data["doc_type"] == "payslip" and isinstance(data["payslip"], dict)
+    assert set(data["payslip"]) >= {"items", "deductions", "total_pay", "net_pay"}
+
 
 def test_ocr_rejects_unsupported_type(settings):
     res = client.post("/api/contracts/ocr", files={"file": ("c.gif", b"img", "image/gif")})

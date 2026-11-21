@@ -798,6 +798,51 @@ components:
               $ref: '#/components/schemas/ExtractedField'
             break_minutes:
               $ref: '#/components/schemas/ExtractedField'
+            year:
+              $ref: '#/components/schemas/ExtractedField'
+              description: 적용 연도 (근로계약기간 시작 연도 high, 그 밖의 날짜 low)
+        payslip:
+          nullable: true
+          description: doc_type=payslip 일 때만. 사용자가 확인·수정한 뒤 API-14 요청으로 보낸다
+          allOf:
+          - $ref: '#/components/schemas/PayslipExtracted'
+    PayslipLineExtracted:
+      type: object
+      required:
+      - name
+      - amount
+      - source_text
+      properties:
+        name:
+          type: string
+        amount:
+          type: integer
+        source_text:
+          type: string
+    PayslipExtracted:
+      type: object
+      properties:
+        employee_name:
+          type: string
+          nullable: true
+        pay_date:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayslipLineExtracted'
+        deductions:
+          type: array
+          items:
+            $ref: '#/components/schemas/PayslipLineExtracted'
+        total_pay:
+          $ref: '#/components/schemas/ExtractedField'
+        net_pay:
+          $ref: '#/components/schemas/ExtractedField'
+        calculation_method:
+          type: string
+          nullable: true
     ReviewRequest:
       type: object
       required:

@@ -6,7 +6,7 @@ from app.core.errors import BadRequestError, FileTooLargeError, UnsupportedFileE
 from app.core.response import ApiResponse, ok
 from app.schemas.contracts import DocType, OcrResult, ReviewRequest, ReviewResult
 from app.services import clova_ocr, review
-from app.services.extract import extract_fields
+from app.services.extract import extract_fields, extract_payslip
 
 router = APIRouter(prefix="/contracts", tags=["contracts"])
 
@@ -43,7 +43,14 @@ async def ocr_contract(
         text = await clova_ocr.recognize(content, fmt)
     finally:
         del content  # 원본은 메모리에서만 처리 (NFR-01)
-    return ok(OcrResult(doc_type=doc_type, raw_text=text.raw_text, extracted=extract_fields(text.lines)))
+    return ok(
+        OcrResult(
+            doc_type=doc_type,
+            raw_text=text.raw_text,
+            extracted=extract_fields(text.lines),
+            payslip=extract_payslip(text.lines) if doc_type == "payslip" else None,
+        )
+    )
 
 
 @router.post("/review", response_model=ApiResponse[ReviewResult])
