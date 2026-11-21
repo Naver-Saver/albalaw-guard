@@ -1,6 +1,12 @@
 {
-  "syncedAt": "2026-11-21T13:33:58+09:00",
+  "syncedAt": "2026-11-21T14:01:41+09:00",
   "items": [
+    {
+      "year": 2027,
+      "hourlyWage": 10700,
+      "periodStart": "2027-01-01",
+      "periodEnd": "2027-12-31"
+    },
     {
       "year": 2026,
       "hourlyWage": 10320,

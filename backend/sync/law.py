@@ -7,7 +7,6 @@
 """
 
 import argparse
-import os
 import re
 import time
 import xml.etree.ElementTree as ET
@@ -15,7 +14,7 @@ from pathlib import Path
 
 import httpx
 
-from sync.common import BACKEND_DIR, DRY_RUN_DIR, RAW_DIR, now_kst_iso, write_json
+from sync.common import DRY_RUN_DIR, RAW_DIR, now_kst_iso, read_env, write_json
 
 BASE_URL = "https://www.law.go.kr/DRF/"
 DEFAULT_LAWS = [
@@ -30,12 +29,7 @@ REQUEST_INTERVAL = 0.4
 
 
 def load_oc() -> str:
-    oc = os.environ.get("LAW_GO_KR_OC", "").strip()
-    if not oc:
-        env_file = BACKEND_DIR / ".env"
-        if env_file.exists():
-            m = re.search(r"^LAW_GO_KR_OC=(.*)$", env_file.read_text(encoding="utf-8"), re.M)
-            oc = m.group(1).strip() if m else ""
+    oc = read_env("LAW_GO_KR_OC")
     if not oc:
         raise SystemExit("LAW_GO_KR_OC 가 설정되어 있지 않습니다 (backend/.env).")
     return oc
