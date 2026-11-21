@@ -4,11 +4,14 @@ import { Badge } from '../components/common/Status'
 import { askText, validateQuestion } from '../features/questions/client'
 import type { AskResult } from '../features/questions/client'
 import { safeOfficialUrl } from '../features/check-results/sourceUrl'
+import { AnswerBody } from '../components/AnswerBody'
+import { SourceDetail } from '../components/SourceDetail'
+import type { Language } from '../features/document-upload/validation'
 import './question.css'
 
 const routeLabels = { faq: 'FAQ · CLOVA Chatbot', studio: '근거 기반 · CLOVA Studio', none: '상담·추가 확인 안내' }
 
-export function QuestionPage({ onBack }: { onBack?: () => void }) {
+export function QuestionPage({ onBack, language = 'ko' }: { onBack?: () => void; language?: Language }) {
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState<{ question: string; result: AskResult }[]>([])
   const [pending, setPending] = useState('')
@@ -42,10 +45,10 @@ export function QuestionPage({ onBack }: { onBack?: () => void }) {
   }
   return <section className="question-page" aria-labelledby="question-title">
     <header className="question-header"><div><p className="eyebrow">ASK SAVER</p><h1 id="question-title">궁금한 점을 물어보세요</h1><p>일하면서 궁금했던 내용을 편하게 적어 보세요.</p></div><Badge>텍스트 질문</Badge></header>
-    <div className="question-notice"><strong>질문을 서버로 보내 답변을 받아요</strong><p>이름·주소·계좌 같은 개인정보는 입력하지 마세요. 답변은 한국어로 제공하며 법률 자문을 대신하지 않아요.</p></div>
+    <div className="question-notice"><strong>질문을 서버로 보내 답변을 받아요</strong><p>이름·주소·계좌 같은 개인정보는 입력하지 마세요. 선택한 언어로 번역해 보여주고, 답변을 소리로 들을 수 있어요. 법률 자문을 대신하지 않아요.</p></div>
     <div className="question-conversation" aria-live="polite" aria-relevant="additions">
       {!messages.length && !pending && <div className="question-message question-message--assistant"><strong>Saver</strong><p>근로계약서, 급여, 근무시간에 대해 궁금한 점을 적어 보세요.</p></div>}
-      {messages.map((message, index) => <div className="question-exchange" key={index}><div className="question-message question-message--user"><strong>나</strong><p>{message.question}</p></div><div className="question-message question-message--assistant"><strong>Saver</strong><p><Badge>{routeLabels[message.result.route]}</Badge></p><p>{message.result.answer}</p>{message.result.sources.length ? <details><summary>답변 근거 보기</summary>{message.result.sources.map(source => { const href = safeOfficialUrl(source.url); return <article key={source.id}><h3>{source.title}</h3>{source.snippet && <p>{source.snippet}</p>}{href ? <a href={href} target="_blank" rel="noreferrer">공식 원문 열기 (새 탭)</a> : <p>원문 링크를 확인할 수 없어요.</p>}</article> })}</details> : <p>연결된 근거가 없어요. 고용노동부 1350 또는 법률구조공단 132에 확인해 주세요.</p>}</div></div>)}
+      {messages.map((message, index) => <div className="question-exchange" key={index}><div className="question-message question-message--user"><strong>나</strong><p>{message.question}</p></div><div className="question-message question-message--assistant"><strong>Saver</strong><p><Badge>{routeLabels[message.result.route]}</Badge></p><AnswerBody answer={message.result.answer} language={language} />{message.result.sources.length ? <details><summary>답변 근거 보기</summary>{message.result.sources.map(source => { const href = safeOfficialUrl(source.url); return <article key={source.id}><h3>{source.title}</h3>{source.snippet && <p>{source.snippet}</p>}<SourceDetail id={source.id} />{href ? <a href={href} target="_blank" rel="noreferrer">공식 원문 열기 (새 탭)</a> : <p>원문 링크를 확인할 수 없어요.</p>}</article> })}</details> : <p>연결된 근거가 없어요. 고용노동부 1350 또는 법률구조공단 132에 확인해 주세요.</p>}</div></div>)}
     </div>
     {pending && <div role="status"><p>{pending}</p><p>답변을 확인하고 있어요.</p><Button variant="secondary" onClick={cancel}>요청 취소</Button></div>}
     <div className="question-suggestions"><p>이런 질문을 해 볼 수 있어요</p>{['주휴수당을 받을 수 있나요?', '급여명세서는 꼭 받아야 하나요?', '휴게시간은 얼마나 주어지나요?'].map(item => <button type="button" disabled={!!pending} key={item} onClick={() => { setQuestion(item); setError(''); fieldRef.current?.focus() }}>{item}</button>)}</div>
