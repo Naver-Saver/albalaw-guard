@@ -3,6 +3,13 @@
 명세(`docs/spec/`)와 파트 A가 제공하는 인터페이스(함수 시그니처·응답 형식)를 바꿀 때 여기에 기록합니다.
 시그니처가 바뀌면 B·C에게 공지가 필요합니다.
 
+## 2026-11-21 (질문 API, #58)
+
+- **API-08 `POST /ask/text`**, **API-07 `POST /ask/voice`** 구현 (명세는 이미 있었음, `03` 설명·오류 보강, FS-03 BR-12 확정).
+- 서비스: `clova_chatbot.py`(FAQ, 서명·판정), `clova_csr.py`(음성 인식), `ask.py`(Chatbot → faq / 근거 검색 + Studio → studio / none), `audio.py`(wav·mp3 길이). 프롬프트 `app/prompts/ask_explain_system.txt`.
+- 내 근무시간을 말한 질문('주 N일 하루 M시간')은 Chatbot을 건너뛰고 `calc.weekly_holiday_hours`(새 공개 함수)로 계산해 Studio에 넘긴다. 설명의 숫자는 질문·근거·계산에 있는 값만 허용(`number_guard`).
+- 라우터를 `main.py`에 등록했다 (담당자 허락).
+
 ## 2026-11-21 (급여명세서 점검·대화 발언 근거)
 
 ### 추가한 API (명세: `openapi.yaml`, `02` FS-01 BR-14·AC-19 / FS-02 BR-15·AC-20, `03` API-14·15)

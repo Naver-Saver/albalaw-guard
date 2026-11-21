@@ -49,6 +49,11 @@ def _pick(item: dict) -> dict:
     return {k: item[k] for k in ("year", "hourlyWage", "periodStart", "periodEnd")}
 
 
+def weekly_holiday_hours(weekly_hours: float) -> float:
+    """주휴시간. 주 15시간 미만이면 0, 아니면 min(주 소정근로시간, 40) / 40 × 8."""
+    return _weekly_holiday_hours(weekly_hours)
+
+
 def _weekly_holiday_hours(weekly_hours: float) -> float:
     if weekly_hours < WEEKLY_HOLIDAY_MIN_HOURS:
         return 0.0
