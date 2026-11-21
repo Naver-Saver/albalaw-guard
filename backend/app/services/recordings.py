@@ -15,7 +15,7 @@ import threading
 import time
 import wave
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 from uuid import uuid4
 
@@ -39,7 +39,12 @@ from app.schemas.recordings import (
     TimelineEntry,
 )
 from app.services import clova_speech, clova_studio
-from app.services.clova_speech import SpeechSegment, to_speech_data_key
+from app.services.clova_speech import (
+    SpeechPollResult,
+    SpeechSegment,
+    parse_speech_segments,
+    to_speech_data_key,
+)
 from app.services.storage import StorageKeys, get_storage
 
 logger = logging.getLogger("app.recordings")
@@ -123,6 +128,38 @@ async def _read_upload_with_limit(file: UploadFile, max_bytes: int) -> bytes:
             raise FileTooLargeError(f"{max_bytes // (1024 * 1024)}MB 이하 파일만 올릴 수 있어요.")
         chunks.append(chunk)
     return b"".join(chunks)
+
+
+def speech_result_key(audio_key: str, token: str, prefix: str = "") -> str:
+    """resultToObs=True 일 때 CLOVA Speech가 버킷에 남기는 결과 JSON 키: '{파일 이름}_{token}.json'."""
+    clean = prefix.replace("\\", "/").strip("/")
+    name = f"{PurePosixPath(audio_key).name}_{token}.json"
+    return f"{clean}/{name}" if clean else name
+
+
+def _read_obs_result(audio_key: str, token: str) -> SpeechPollResult | None:
+    """상태 조회 응답에 segments가 비어 있으면(resultToObs) 버킷의 결과 JSON을 읽는다."""
+    key = speech_result_key(audio_key, token, get_settings().clova_speech_result_prefix)
+    try:
+        data = get_storage().get_json(key)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("speech result read failed: key=%s error=%s", key, type(exc).__name__)
+        return None
+    if not isinstance(data, dict):
+        return None
+    segments, speakers, transcript, duration_sec = parse_speech_segments(data)
+    return SpeechPollResult(
+        status="completed",
+        segments=segments,
+        speakers=speakers,
+        transcript=transcript,
+        duration_sec=duration_sec,
+    )
+
+
+def _delete_result_best_effort(audio_key: str, token: str) -> None:
+    """결과 JSON(대화 전문)도 원본과 같이 바로 지운다 (NFR-01)."""
+    _delete_audio_best_effort(speech_result_key(audio_key, token, get_settings().clova_speech_result_prefix))
 
 
 def _delete_audio_best_effort(audio_key: str | None) -> None:
@@ -311,6 +348,10 @@ async def get_recording_job(job_id: str) -> RecordingJob:
     poll = await clova_speech.get_recognition_status(token)
     if poll.status == "processing":
         return RecordingJob(job_id=job_id, status="processing")
+
+    if poll.status == "completed" and not poll.segments:
+        poll = await asyncio.to_thread(_read_obs_result, audio_key, token) or poll
+    await asyncio.to_thread(_delete_result_best_effort, audio_key, token)
 
     if poll.status == "failed":
         await asyncio.to_thread(_delete_audio_best_effort, audio_key)
