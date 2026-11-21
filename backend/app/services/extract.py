@@ -77,11 +77,17 @@ def _day_range(a: str, b: str) -> list[str]:
     return list(DAYS[i:] + DAYS[: j + 1])  # 토~월 처럼 주말을 넘는 범위
 
 
+def _before_break(line: str) -> str:
+    """'휴게' 앞부분만 남긴다. 근로시간과 휴게시간이 한 줄에 함께 적힌 경우를 처리."""
+    return line.split("휴게", 1)[0].strip()
+
+
 def find_work_days(lines: list[str]) -> tuple[_Found | None, int | None, str | None]:
     """(요일 목록, 주 근무일 수, 근거 문구). 요일을 모르면 '주 N일'로 일수만 반환."""
     ordered = sorted(lines, key=lambda ln: not any(k in ln for k in (*_WORK_KEYWORDS, "요일")))
     for line in ordered:
-        if "휴게" in line:
+        line = _before_break(line)
+        if not line:
             continue
         m = _RE_DAY_RANGE.search(line)
         if m:
@@ -112,7 +118,8 @@ def _range_minutes(m: re.Match) -> int:
 def find_daily_minutes(lines: list[str]) -> _Found | None:
     ordered = sorted(lines, key=lambda ln: not any(k in ln for k in _WORK_KEYWORDS))
     for line in ordered:
-        if "휴게" in line:
+        line = _before_break(line)
+        if not line:
             continue
         m = _RE_TIME_RANGE.search(line)
         if m:
