@@ -1,0 +1,43 @@
+{
+  "source": "LAW_API",
+  "syncedAt": "2026-01-01T00:00:00+09:00",
+  "laws": [],
+  "items": [
+    {
+      "id": "law-t-55",
+      "source": "LAW_API",
+      "lawId": "t",
+      "lawName": "테스트법",
+      "chapter": "제4장 근로시간과 휴식",
+      "articleNo": "제55조",
+      "title": "휴일",
+      "text": "제55조(휴일)\n① 사용자는 근로자에게 1주에 평균 1회 이상의 유급휴일을 보장하여야 한다.",
+      "effectiveDate": "20260101",
+      "sourceUrl": "https://example.test/law-t-55"
+    },
+    {
+      "id": "law-t-54",
+      "source": "LAW_API",
+      "lawId": "t",
+      "lawName": "테스트법",
+      "chapter": "제4장 근로시간과 휴식",
+      "articleNo": "제54조",
+      "title": "휴게",
+      "text": "제54조(휴게)\n① 사용자는 근로시간이 4시간인 경우에는 30분 이상의 휴게시간을 주어야 한다.",
+      "effectiveDate": "20260101",
+      "sourceUrl": "https://example.test/law-t-54"
+    },
+    {
+      "id": "law-t-26",
+      "source": "LAW_API",
+      "lawId": "t",
+      "lawName": "테스트법",
+      "chapter": "제2장 근로계약",
+      "articleNo": "제26조",
+      "title": "해고의 예고",
+      "text": "제26조(해고의 예고) 사용자는 근로자를 해고하려면 적어도 30일 전에 예고를 하여야 한다.",
+      "effectiveDate": "20260101",
+      "sourceUrl": "https://example.test/law-t-26"
+    }
+  ]
+}

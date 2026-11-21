@@ -80,6 +80,49 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '422':
           $ref: '#/components/responses/ValidationError'
+  /wage/minimum:
+    get:
+      tags:
+      - wage
+      operationId: getMinimumWage
+      x-spec-id: API-13
+      x-fs:
+      - FS-01
+      - BR-03
+      summary: 연도별 최저임금 조회 (고용노동부 연도별 최저임금 CSV 기반)
+      description: '`year`를 생략하면 올해 값을 돌려주고, 올해 데이터가 없으면 데이터가 있는 가장 최근 연도로 대체한다(`is_fallback: true`).
+        `year`를 직접 지정했는데 데이터가 없으면 404(NOT_FOUND).'
+      parameters:
+      - name: year
+        in: query
+        schema:
+          type: integer
+          minimum: 1900
+          maximum: 2200
+      responses:
+        '200':
+          description: 최저임금
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - success
+                - data
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: '#/components/schemas/MinimumWage'
+        '404':
+          description: 해당 연도 데이터 없음 (code=NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /contracts/ocr:
     post:
       tags:
@@ -448,7 +491,7 @@ paths:
       x-spec-id: API-11
       x-fs:
       - FS-06
-      summary: 백문백답(근로자 분야) 키워드 검색
+      summary: 근거(수동 Q&A·법령 조문) 키워드 검색
       parameters:
       - name: q
         in: query
@@ -485,6 +528,44 @@ paths:
                         type: array
                         items:
                           $ref: '#/components/schemas/Source'
+  /law/sources/{source_id}:
+    get:
+      tags:
+      - qa
+      operationId: getLawSource
+      x-spec-id: API-12
+      x-fs:
+      - FS-06
+      summary: 근거 원문 단건 조회 (출처 클릭용)
+      parameters:
+      - name: source_id
+        in: path
+        required: true
+        schema:
+          type: string
+        example: law-001872-17
+      responses:
+        '200':
+          description: 근거 원문
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - success
+                - data
+                properties:
+                  success:
+                    type: boolean
+                    const: true
+                  data:
+                    $ref: '#/components/schemas/LawSource'
+        '404':
+          description: 없는 근거 (code=NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   responses:
     BadRequest:
@@ -684,13 +765,63 @@ components:
       properties:
         id:
           type: string
-          description: 백문백답 문항 식별자
+          description: '근거 식별자 (예: manual-009, law-001872-17)'
+        source:
+          type: string
+          description: MANUAL | LAW_API
         title:
           type: string
         snippet:
           type: string
         url:
           type: string
+    LawSource:
+      type: object
+      required:
+      - id
+      - source
+      - title
+      - text
+      - url
+      properties:
+        id:
+          type: string
+        source:
+          type: string
+        title:
+          type: string
+        text:
+          type: string
+          description: 잘리지 않은 원문
+        url:
+          type: string
+        related_article_ids:
+          type: array
+          items:
+            type: string
+    MinimumWage:
+      type: object
+      required:
+      - year
+      - hourly_wage
+      - period_start
+      - period_end
+      - is_fallback
+      properties:
+        year:
+          type: integer
+        hourly_wage:
+          type: integer
+          description: 시간급(원)
+        period_start:
+          type: string
+          format: date
+        period_end:
+          type: string
+          format: date
+        is_fallback:
+          type: boolean
+          description: 요청 연도 데이터가 없어 다른 연도로 대체했는지
     CheckItem:
       type: object
       required:

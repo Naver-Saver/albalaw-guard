@@ -44,7 +44,9 @@
 | API-08 | `POST /ask/text` | 텍스트 질문 | FS-03 BR-11 | BE·AI | 합의 전 |
 | API-09 | `POST /tts` | 음성 합성(mp3) | FS-01, FS-03 | AI | 합의 전 |
 | API-10 | `POST /translate` | 번역 | FS-04 | AI | 합의 전 |
-| API-11 | `GET /qa/search` | 백문백답 검색 | FS-06 | DATA | 합의 전 |
+| API-11 | `GET /qa/search` | 근거(수동 Q&A·법령 조문) 키워드 검색 | FS-06 | DATA | 구현(라우터 등록 대기) |
+| API-12 | `GET /law/sources/{source_id}` | 근거 원문 단건 조회 | FS-06 | DATA | 구현(라우터 등록 대기) |
+| API-13 | `GET /wage/minimum` | 연도별 최저임금 조회 | FS-01 BR-03 | DATA | 구현 |
 
 ## 주요 요청·응답 예시
 
@@ -61,6 +63,30 @@
   "weekly_holiday_hours": 4.0, "weekly_holiday_pay": 41280
 } }
 ```
+
+### API-11 `GET /qa/search?q=주휴수당&limit=3`
+
+```json
+{ "success": true, "data": { "items": [ { "id": "manual-009", "source": "MANUAL", "title": "주휴수당은 어떤 경우에 받을 수 있나요?", "snippet": "근로기준법 제55조는 …", "url": "https://www.law.go.kr/법령/근로기준법/제55조" } ] } }
+```
+
+`source`: `MANUAL`(조문 기반 수동 Q&A, 우선) · `LAW_API`(국가법령정보센터 조문). 결과가 없으면 `items: []`.
+
+### API-12 `GET /law/sources/law-001872-17`
+
+```json
+{ "success": true, "data": { "id": "law-001872-17", "source": "LAW_API", "title": "근로기준법 제17조(근로조건의 명시)", "text": "제17조(근로조건의 명시)\n① …", "url": "https://www.law.go.kr/…", "related_article_ids": [] } }
+```
+
+없는 id는 404 `NOT_FOUND` (`근거 원문을 찾을 수 없어요.`). 수동 Q&A는 `related_article_ids`에 연결된 조문 id를 담는다.
+
+### API-13 `GET /wage/minimum?year=2026`
+
+```json
+{ "success": true, "data": { "year": 2026, "hourly_wage": 10320, "period_start": "2026-01-01", "period_end": "2026-12-31", "is_fallback": false } }
+```
+
+`year` 생략 시 올해 값, 올해 데이터가 없으면 가장 최근 연도로 대체하고 `is_fallback: true`. `year`를 지정했는데 데이터가 없으면 404 `NOT_FOUND`.
 
 ### API-03 `POST /contracts/ocr`
 
@@ -129,3 +155,4 @@ file=@contract.jpg, doc_type=contract
 | --- | --- | --- |
 | 2026-11-20 | 초안 작성 (API-01~11) | #1 |
 | 2026-11-20 | 공통 응답 형식·오류 코드·X-Request-ID 추가 (v0.2) | #8 |
+| 2026-11-21 | API-11 응답에 `source` 추가·설명 변경, API-12(근거 원문)·API-13(최저임금 조회) 추가 (공통 응답 형식 적용) | #21 |

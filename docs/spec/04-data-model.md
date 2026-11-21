@@ -9,8 +9,9 @@
 [문서 사진] ─► 백엔드(메모리) ─► CLOVA OCR(base64) ─► 텍스트 ─► 코드 계산 ─► CLOVA Studio   ※ 이미지 저장 안 함
 [녹음 파일] ─► 백엔드 ─► Object Storage uploads/ (임시) ─► CLOVA Speech ─► 처리 직후 삭제
 
-[법제처 백문백답 API] ─(수집 스크립트)─► Object Storage law-data/ (JSON 원문) ─► 서버 시작 시 메모리 로드
-                                                                       └─ 키워드 검색 상위 3건 ─► CLOVA Studio 프롬프트
+[국가법령정보센터 Open API] ─┐
+[고용노동부 최저임금 CSV]    ─┼─(sync 스크립트)─► Object Storage law-data/ (JSON) ─► 서버 시작 시 메모리 로드
+[조문 기반 수동 Q&A]        ─┘                                                  └─ 키워드 검색 상위 N건 ─► CLOVA Studio 프롬프트
 ```
 
 ## Object Storage 구성 (버킷 `albalaw-uploads`)
@@ -18,20 +19,51 @@
 | 경로 | 내용 | 보관 |
 | --- | --- | --- |
 | `uploads/{uuid}.{ext}` | 녹음 파일 (CLOVA Speech 입력) | 처리 직후 삭제 + 콘솔 수명주기 1일 |
-| `law-data/manyask-worker.json` | 백문백답 근로자 분야 원문 (수집 스크립트 결과) | 계속 보관, 수동 갱신 |
+| `law-data/law-articles.json` | 근로기준법·시행령, 최저임금법·시행령, 근로자퇴직급여 보장법 조문 (`python -m sync.law`) | 계속 보관, 수동 갱신 |
+| `law-data/qna-manual.json` | 조문 기반 수동 Q&A (`source: MANUAL`, `relatedArticleIds`로 조문 연결) | 계속 보관, 사람 검수 |
+| `law-data/min-wage.json` | 연도별 최저임금 (고용노동부 CSV 변환, `python -m sync.wage`) | 계속 보관, 연 1회 갱신 |
 | `law-data/raw/{날짜}/...xml` | (선택) API 원본 응답 백업 — 시연 중 API 장애 대비 | 계속 보관 |
 
-### `manyask-worker.json` 형식
+> 법제처 백문백답·생활법령 GW API(15159736·15160076)는 호출 오류(코드 04)로 쓰지 못해 위 구성으로 대체했다. 복구되면 `qna-labor.json` 등을 같은 형식으로 추가한다.
+> 현재는 `backend/data/law-data/`의 같은 파일을 직접 읽는다(Object Storage 모듈 구현 전). 경로는 환경변수 `LAW_DATA_DIR`로 바꿀 수 있다.
+
+### `law-articles.json` 형식
 
 ```json
 {
-  "fetched_at": "2026-11-21T10:00:00+09:00",
-  "source": "법제처_생활법령 백문백답 서비스_GW (data.go.kr 15159736)",
+  "source": "LAW_API", "syncedAt": "2026-11-21T13:23:00+09:00",
+  "laws": [ { "lawId": "001872", "lawName": "근로기준법", "effectiveDate": "20261008", "articleCount": 128 } ],
   "items": [
-    { "id": "…", "title": "주휴수당은 누가 받을 수 있나요?", "answer": "…", "keywords": ["주휴수당", "주 15시간"], "url": "…" }
+    { "id": "law-001872-17", "source": "LAW_API", "lawId": "001872", "lawName": "근로기준법",
+      "chapter": "제2장 근로계약", "articleNo": "제17조", "title": "근로조건의 명시",
+      "text": "제17조(근로조건의 명시)\n① …", "effectiveDate": "20261008",
+      "sourceUrl": "https://www.law.go.kr/법령/근로기준법/제17조" }
   ]
 }
 ```
+
+id 규칙: `law-<법령ID>-<조번호>[-<가지번호>]` (제43조의2 → `law-001872-43-2`).
+
+### `qna-manual.json` 형식
+
+```json
+{
+  "source": "MANUAL", "syncedAt": "…", "note": "…",
+  "items": [
+    { "id": "manual-009", "category": "휴일 > 주휴일", "question": "…", "answer": "…",
+      "relatedLaw": "근로기준법 제18조, …", "relatedArticleIds": ["law-001872-55"],
+      "keywords": ["주휴수당"], "sourceUrl": "https://www.law.go.kr/…" }
+  ]
+}
+```
+
+### `min-wage.json` 형식
+
+```json
+{ "syncedAt": "…", "items": [ { "year": 2026, "hourlyWage": 10320, "periodStart": "2026-01-01", "periodEnd": "2026-12-31" } ] }
+```
+
+CSV에 적용기간 열이 없어 해당 연도 1/1~12/31로 채운다.
 
 ## 서버 메모리 (재시작 시 사라져도 되는 것)
 
