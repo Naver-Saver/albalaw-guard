@@ -51,3 +51,16 @@ def test_missing_values_are_null_low():
 def test_ignores_out_of_range_wage():
     f = extract_fields(["시급 계산 예시 300원", "시급 9,860원"])
     assert f.hourly_wage.value == 9_860
+
+
+def test_break_on_same_line_as_work_hours():
+    f = extract_fields(["근로일: 월~금", "근로시간: 18:00 ~ 22:00 (휴게시간 30분)", "임금: 시간급 10,000원"])
+    assert f.break_minutes.value == 30
+    # 5일 × (4시간 − 30분) = 17.5시간
+    assert f.weekly_hours.value == 17.5 and f.weekly_hours.confidence == "low"
+
+
+def test_break_only_line_is_not_work_hours():
+    f = extract_fields(["근로시간 09:00~18:00", "휴게 12:00~13:00", "주 5일 근무"])
+    assert f.break_minutes.value == 60
+    assert f.weekly_hours.value == 40
