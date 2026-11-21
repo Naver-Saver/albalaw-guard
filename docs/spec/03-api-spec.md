@@ -42,13 +42,13 @@
 | API-06 | `GET /recordings/{job_id}` | 작업 상태·타임라인 | FS-02 BR-08~10 | BE·AI | 합의 전 |
 | API-07 | `POST /ask/voice` | 음성 질문 | FS-03 BR-11~13 | BE·AI | 구현 |
 | API-08 | `POST /ask/text` | 텍스트 질문 | FS-03 BR-11 | BE·AI | 구현 |
-| API-09 | `POST /tts` | 음성 합성(mp3) | FS-01, FS-03 | AI | 합의 전 |
-| API-10 | `POST /translate` | 번역 | FS-04 | AI | 구현 (라우터 등록 대기) |
-| API-11 | `GET /qa/search` | 근거(수동 Q&A·법령 조문) 키워드 검색 | FS-06 | DATA | 구현(라우터 등록 대기) |
-| API-12 | `GET /law/sources/{source_id}` | 근거 원문 단건 조회 | FS-06 | DATA | 구현(라우터 등록 대기) |
+| API-09 | `POST /tts` | 음성 합성(mp3) | FS-01, FS-03 | AI | 구현 (#47) |
+| API-10 | `POST /translate` | 번역 | FS-04 | AI | 구현 |
+| API-11 | `GET /qa/search` | 근거(수동 Q&A·법령 조문) 키워드 검색 | FS-06 | DATA | 구현 |
+| API-12 | `GET /law/sources/{source_id}` | 근거 원문 단건 조회 | FS-06 | DATA | 구현 |
 | API-13 | `GET /wage/minimum` | 연도별 최저임금 조회 | FS-01 BR-03 | DATA | 구현 |
-| API-14 | `POST /payslips/review` | 급여명세서 점검 | FS-01 BR-14 | DATA | 구현 (라우터 등록 대기) |
-| API-15 | `POST /recordings/evidence` | 대화 발언 근거·말로만 한 약속 안내 | FS-02 BR-15 | DATA | 구현 (라우터 등록 대기) |
+| API-14 | `POST /payslips/review` | 급여명세서 점검 | FS-01 BR-14 | DATA | 구현 |
+| API-15 | `POST /recordings/evidence` | 대화 발언 근거·말로만 한 약속 안내 | FS-02 BR-15 | DATA | 구현 |
 
 ## 주요 요청·응답 예시
 
