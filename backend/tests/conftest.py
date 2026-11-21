@@ -13,9 +13,13 @@ FIXTURE_DIR = Path(__file__).parent / "fixtures"
 @pytest.fixture(autouse=True)
 def isolate_storage():
     """모든 테스트가 실제 .env의 NCP Object Storage를 호출하지 않도록 인메모리로 격리한다."""
+    from app.services import law_data
+
     storage.set_storage(InMemoryObjectStorage())
+    law_data.clear_cache()  # 근거 데이터 TTL 캐시가 테스트 사이에 새지 않도록
     yield
     storage.set_storage(None)
+    law_data.clear_cache()
 
 
 @pytest.fixture

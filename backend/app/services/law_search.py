@@ -6,10 +6,14 @@
 (공공데이터포털 백문백답 API 복구 시 QNA100 등 추가 가능)
 """
 
+import logging
 import re
 import threading
+import time
 
 from app.services import law_data
+
+logger = logging.getLogger(__name__)
 
 MAX_TEXT_CHARS = 800
 SOURCE_PRIORITY = {"MANUAL": 1.5, "QNA100": 1.5, "LIFELAW_RULE": 1.2, "LIFELAW_FAQ": 1.2, "LAW_API": 1.0}
@@ -71,6 +75,7 @@ _lock = threading.Lock()
 _index: dict[str, dict] = {}
 _ordered: list[dict] = []
 _loaded = False
+_loaded_at = 0.0
 
 
 def _truncate(text: str, limit: int = MAX_TEXT_CHARS) -> str:
@@ -105,9 +110,10 @@ def _normalize_article(raw: dict) -> dict:
     }
 
 
-def load_law_data() -> None:
-    """서버 시작 시 1회 호출. law-data/*.json 을 메모리에 적재한다 (다시 호출하면 새로 읽음)."""
-    global _index, _ordered, _loaded
+def load_law_data(keep_on_empty: bool = False) -> None:
+    """law-data/*.json 을 메모리에 적재한다 (서버 시작 시 호출, 다시 호출하면 새로 읽음).
+    keep_on_empty=True 이면 새로 읽은 결과가 비었을 때(저장소 일시 오류) 기존 인덱스를 유지한다."""
+    global _index, _ordered, _loaded, _loaded_at
     items: list[dict] = []
     manual = law_data.read_json(law_data.QNA_MANUAL_FILE)
     if manual:
@@ -116,14 +122,23 @@ def load_law_data() -> None:
     if articles:
         items += [_normalize_article(r) for r in articles.get("items", [])]
     with _lock:
+        _loaded_at = time.monotonic()
+        if keep_on_empty and not items and _ordered:
+            logger.warning("근거 데이터 재적재 결과가 비어 있어 기존 데이터를 유지합니다.")
+            return
         _ordered = items
         _index = {i["id"]: i for i in items}
         _loaded = True
 
 
 def _ensure_loaded() -> None:
+    """처음 쓸 때 적재하고, 캐시 시간(LAW_DATA_CACHE_SEC)이 지나면 다시 적재해 정기 수집 결과를 반영한다."""
     if not _loaded:
         load_law_data()
+        return
+    ttl = law_data.cache_ttl()
+    if ttl and time.monotonic() - _loaded_at >= ttl:
+        load_law_data(keep_on_empty=True)
 
 
 def _tokens(query: str | list[str]) -> list[str]:
