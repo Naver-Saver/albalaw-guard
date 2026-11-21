@@ -40,8 +40,8 @@
 | API-04 | `POST /contracts/review` | 계산 + 근거 설명 | FS-01 BR-03~06 | BE·AI | 구현 (#12) |
 | API-05 | `POST /recordings` | 녹음 업로드 → 작업 생성 | FS-02 BR-07 | BE·AI | 합의 전 |
 | API-06 | `GET /recordings/{job_id}` | 작업 상태·타임라인 | FS-02 BR-08~10 | BE·AI | 합의 전 |
-| API-07 | `POST /ask/voice` | 음성 질문 | FS-03 BR-11~13 | BE·AI | 합의 전 |
-| API-08 | `POST /ask/text` | 텍스트 질문 | FS-03 BR-11 | BE·AI | 합의 전 |
+| API-07 | `POST /ask/voice` | 음성 질문 | FS-03 BR-11~13 | BE·AI | 구현 |
+| API-08 | `POST /ask/text` | 텍스트 질문 | FS-03 BR-11 | BE·AI | 구현 |
 | API-09 | `POST /tts` | 음성 합성(mp3) | FS-01, FS-03 | AI | 합의 전 |
 | API-10 | `POST /translate` | 번역 | FS-04 | AI | 구현 (라우터 등록 대기) |
 | API-11 | `GET /qa/search` | 근거(수동 Q&A·법령 조문) 키워드 검색 | FS-06 | DATA | 구현(라우터 등록 대기) |
@@ -189,8 +189,16 @@ file=@contract.jpg, doc_type=contract
 ### API-07 / API-08 질문
 
 ```json
-{ "question": "주휴수당 받을 수 있어?", "route": "faq", "answer": "…", "sources": [] }
+// POST /ask/text 요청 (question 2~300자). POST /ask/voice 는 multipart `file` (60초 이하, 10MB 이하)
+{ "question": "주 3일 하루 5시간 일하면 주휴수당 나와?" }
+// 응답 200 (data 안의 내용)
+{ "success": true, "data": { "question": "주 3일 하루 5시간 일하면 주휴수당 나와?", "route": "studio",
+  "answer": "주 3일 하루 5시간이면 주 15시간이라 주휴수당 대상이 될 수 있어요. …",
+  "sources": [ { "id": "manual-011", "title": "주 15시간 미만으로 일하면 …", "snippet": "…", "url": "https://www.law.go.kr/…" } ] } }
 ```
+
+`route`: `faq`(Chatbot FAQ, 신뢰도 0.7 이상) · `studio`(근거 검색 + Studio 설명) · `none`(근거를 못 찾았거나 설명을 못 만들었을 때 상담 안내, 찾은 근거는 `sources`에 남김).
+음성에서 인식된 말이 없으면 200 + `route: none`, `answer: "잘 못 들었어요. 텍스트로 질문해 주세요."`(BR-13). 60초 초과(wav·mp3는 서버가 길이 확인)나 읽을 수 없는 음성은 400, 10MB 초과는 413, 인식 서비스 장애는 502. 녹음은 저장하지 않는다.
 
 ## 변경 이력
 
@@ -198,5 +206,6 @@ file=@contract.jpg, doc_type=contract
 | --- | --- | --- |
 | 2026-11-20 | 초안 작성 (API-01~11) | #1 |
 | 2026-11-20 | 공통 응답 형식·오류 코드·X-Request-ID 추가 (v0.2) | #8 |
+| 2026-11-21 | API-07·08 구현 상태 갱신, 응답 설명·오류 보강 | #58 |
 | 2026-11-21 | API-14(급여명세서 점검)·API-15(대화 발언 근거) 추가 | — |
 | 2026-11-21 | API-11 응답에 `source` 추가·설명 변경, API-12(근거 원문)·API-13(최저임금 조회) 추가 (공통 응답 형식 적용) | #21 |
