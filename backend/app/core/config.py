@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     clova_speech_invoke_url: str = ""
     clova_speech_secret: str = ""
     clova_speech_data_key_prefix: str = ""
+    # resultToObs 결과 JSON이 저장되는 버킷 경로 (도메인 설정의 "결과 저장 경로", 기본 버킷 루트)
+    clova_speech_result_prefix: str = ""
     recording_max_bytes: int = 200 * 1024 * 1024
     recording_max_duration_sec: int = 10 * 60
     recording_job_ttl_sec: int = 3600
