@@ -24,7 +24,9 @@ from app.services.http import post_with_retry
 
 logger = logging.getLogger("app.chatbot")
 CHATBOT_TIMEOUT_SEC = 10
-FAQ_MIN_SCORE = 0.7  # BR-11 (리허설 후 조정)
+# BR-11. 실제 Chatbot 응답 35문항으로 점검한 결과(scripts/faq_probe.py): 0.70이면 엉뚱한 FAQ가 8건 걸려서
+# 0.75로 올리고, 정확 일치가 아닌 매칭은 질문의 핵심어가 답변·시나리오에 나올 때만 FAQ로 인정한다(ask.py).
+FAQ_MIN_SCORE = 0.75
 
 
 @dataclass(frozen=True)

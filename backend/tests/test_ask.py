@@ -46,7 +46,9 @@ def test_parse_no_match_sample_is_fallback():
     assert a.text
 
 
-@pytest.mark.parametrize(("score", "faq"), [(1.0, True), (0.7, True), (0.69, False), (None, False)])
+@pytest.mark.parametrize(
+    ("score", "faq"), [(1.0, True), (0.75, True), (0.74, False), (0.7, False), (None, False)]
+)
 def test_faq_threshold(score, faq):
     a = clova_chatbot.ChatbotAnswer("x", score, "model", "s", is_fallback=False)
     assert a.is_faq is faq
@@ -234,6 +236,38 @@ def studio(monkeypatch):
     return state
 
 
+def _reply(text, score, matching, scenario="휴게시간"):
+    return clova_chatbot.ChatbotAnswer(text, score, matching, scenario, is_fallback=False)
+
+
+def test_faq_fits_question_exact_match_always_fits():
+    assert ask.faq_fits_question("전혀 다른 말", _reply("아무 답", 1.0, "exactMatch"))
+
+
+def test_faq_fits_question_model_match_needs_a_shared_keyword():
+    reply = _reply("휴게시간은 4시간이면 30분 이상 받아야 해요.", 0.8, "model")
+    assert ask.faq_fits_question("일하는 중간에 휴게시간 줘야 해?", reply)  # 답변에 나오는 핵심어
+    assert ask.faq_fits_question("쉬는 날에 일해요", _reply("답", 0.8, "model", "휴게시간")) is False
+    assert ask.faq_fits_question(
+        "휴게 얼마나 줘야 돼?", _reply("답", 0.8, "model", "휴게시간")
+    )  # 시나리오 이름과 일치
+    assert ask.faq_fits_question("사장님이 욕해요", reply) is False  # 엉뚱한 FAQ
+
+
+async def test_model_match_without_shared_keyword_goes_to_studio(chatbot, studio):
+    replies, _ = chatbot
+    replies["야근하면 수당은 안 나가?"] = _reply("휴게시간 안내예요.", 0.8, "model", "휴게시간")
+    r = await ask.answer_question("야근하면 수당은 안 나가?")
+    assert r.route == "studio"  # FAQ가 질문과 맞지 않아 근거 기반 설명으로
+
+
+async def test_low_score_model_match_goes_to_studio(chatbot, studio):
+    replies, _ = chatbot
+    replies["야근하면 수당은 안 나가?"] = _reply("야근 수당 안내예요.", 0.72, "model", "야간수당")
+    r = await ask.answer_question("야근하면 수당은 안 나가?")
+    assert r.route == "studio"
+
+
 async def test_faq_route(chatbot):
     replies, _ = chatbot
     replies["주휴수당 받을 수 있어?"] = clova_chatbot.ChatbotAnswer(
@@ -267,6 +301,19 @@ async def test_number_guard_removes_unverified_sentences(chatbot, studio):
     )
     r = await ask.answer_question("야근하면 수당은 안 나가?")
     assert "777,777" not in r.answer and "제55조" in r.answer
+
+
+async def test_markdown_bold_is_stripped(chatbot, studio):
+    studio["reply"] = "주휴수당은 **15시간 이상**이면 받아요. 상담은 1350이에요."
+    r = await ask.answer_question("야근하면 수당은 안 나가?")
+    assert "**" not in r.answer and "15시간 이상" in r.answer
+
+
+def test_prompt_forbids_assertive_conclusions():
+    from app.prompts import load
+
+    prompt = load("ask_explain_system")
+    assert "단정하지 않는다" in prompt and "받을 수 없어요" in prompt and "확인이 필요해요" in prompt
 
 
 async def test_all_sentences_unverified_falls_back(chatbot, studio):

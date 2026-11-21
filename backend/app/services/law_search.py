@@ -141,6 +141,11 @@ def _ensure_loaded() -> None:
         load_law_data(keep_on_empty=True)
 
 
+def keywords_of(text: str) -> list[str]:
+    """문장에서 검색에 쓰는 핵심어(조사 제거, 불용어 제외)를 뽑는다."""
+    return _tokens(text)
+
+
 def _tokens(query: str | list[str]) -> list[str]:
     parts = query if isinstance(query, list) else [query]
     out: list[str] = []

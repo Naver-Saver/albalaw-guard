@@ -830,6 +830,7 @@ components:
           type: integer
         lang:
           $ref: '#/components/schemas/Lang'
+          description: 서버가 사용하지 않는다(응답은 항상 한국어). 점검 결과 번역은 프런트가 POST /translate로 한다.
     Source:
       type: object
       required:
