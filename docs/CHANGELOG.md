@@ -30,7 +30,7 @@
 
 ### CLAUDE.md 초안과 다르게 구현한 점 (레포 컨벤션 우선)
 
-- 필드·키 이름은 snake_case, 오류는 `{"detail": …}`, 경로는 `/api/...` (CLAUDE.md의 camelCase·`{success, code…}`·`/api/v1` 대신 레포 `openapi.yaml` 기준).
+- API 필드 이름은 snake_case, 응답은 공통 응답 형식(`{"success": true, "data": …}` / `{"success": false, "error": {"code", "message"}}`), 경로는 `/api/...` (CLAUDE.md의 camelCase·`{success, code, message, data}`·`/api/v1` 대신 `main`의 공통 응답과 `openapi.yaml` 기준). 없는 근거·연도는 `NOT_FOUND`(404).
 - `calc.check_contract_wage`의 반환 키는 CLAUDE.md 초안과 같은 camelCase(`minimumWage` 등)이고, 서비스 내부용이다. API 응답 변환은 라우터에서 한다.
 - 주휴수당은 `주휴시간 × max(시급, 최저임금)` — 레포 명세 BR-04를 따랐다 (CLAUDE.md 초안은 `시급` 기준). 팀 검토 필요.
 - 계약 기간(`contract_period`)은 근거 법령(기간제법)을 수집하지 않아 체크리스트에서 뺐다.
