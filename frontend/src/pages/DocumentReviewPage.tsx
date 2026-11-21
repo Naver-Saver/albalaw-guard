@@ -42,12 +42,12 @@ export function DocumentReviewPage({ session, onChange, onReplace, onConfirm }: 
   }
 
   function sourceHint(field: keyof Omit<ReviewDraft, 'year'>, fallback: string) {
-    return ocr?.extracted[field].source_text ? `샘플 원문: ${ocr.extracted[field].source_text}` : fallback
+    return ocr?.extracted[field].source_text ? `${session.mode === 'sample' ? '샘플 원문' : 'OCR 원문'}: ${ocr.extracted[field].source_text}` : fallback
   }
 
   return <>
-    <div className="review-heading"><div><p className="eyebrow">CHECK BEFORE YOU CONTINUE</p><h1>{session.mode === 'sample' ? '추출한 내용이 맞는지 확인해 주세요' : '원본을 보며 내용을 입력해 주세요'}</h1><p>시급과 근무조건을 확인하고, 잘못되거나 비어 있는 항목을 수정해 주세요.</p></div><Badge>STEP 02 · 내용 확인</Badge></div>
-    <div className="review-notice"><Icon name="info" /><p><strong>{session.mode === 'sample' ? '샘플 OCR 응답 체험' : '실제 OCR 연결 전 · 직접 입력'}</strong>{session.mode === 'sample' ? '아래 문서와 값은 모두 화면 체험을 위한 샘플이에요. 업로드한 문서에서 읽은 값이 아니에요.' : '파일은 서버로 전송되지 않았어요. 자동으로 읽어낸 값은 없으며, 원본을 보고 직접 입력할 수 있어요.'}</p></div>
+    <div className="review-heading"><div><p className="eyebrow">CHECK BEFORE YOU CONTINUE</p><h1>{ocr ? '추출한 내용이 맞는지 확인해 주세요' : '원본을 보며 내용을 입력해 주세요'}</h1><p>시급과 근무조건을 확인하고, 잘못되거나 비어 있는 항목을 수정해 주세요.</p></div><Badge>STEP 02 · 내용 확인</Badge></div>
+    <div className="review-notice"><Icon name="info" /><p><strong>{session.mode === 'sample' ? '샘플 OCR 응답 체험' : ocr ? 'OCR 추출 완료 · 직접 확인 필요' : '직접 입력'}</strong>{session.mode === 'sample' ? '아래 문서와 값은 모두 화면 체험을 위한 샘플이에요. 업로드한 문서에서 읽은 값이 아니에요.' : ocr ? '서버에서 읽어낸 값이에요. 인식 오류나 누락이 있을 수 있으니 원본과 비교해 주세요.' : '원본을 보고 직접 입력해 주세요.'}</p></div>
     <div className="review-grid">
       <Card title="원본 문서" description="원본과 오른쪽 입력 내용을 비교해 주세요." action={<Badge>{session.mode === 'sample' ? '샘플' : session.document?.docType === 'payslip' ? '급여명세서' : '근로계약서'}</Badge>}>
         <div className="review-original">
@@ -55,7 +55,7 @@ export function DocumentReviewPage({ session, onChange, onReplace, onConfirm }: 
         </div>
         <div className="review-original-actions">{(session.mode === 'sample' || session.document?.kind === 'image' && !imageFailed) && <Button variant="secondary" aria-pressed={zoomed} onClick={() => setZoomed(!zoomed)}>{zoomed ? '기본 크기로 보기' : '확대해서 보기'}</Button>}<Button variant="ghost" onClick={onReplace}>다른 문서로 교체</Button></div>
         {session.document && <p className="review-file-name">{session.document.file.name}</p>}
-        {ocr && <details className="review-raw"><summary>샘플 OCR 원문 보기</summary><pre>{ocr.raw_text}</pre></details>}
+        {ocr && <details className="review-raw"><summary>{session.mode === 'sample' ? '샘플 OCR 원문 보기' : 'OCR 원문 보기'}</summary><pre>{ocr.raw_text}</pre></details>}
       </Card>
       <Card title={ocr ? '추출된 내용' : '확인할 내용'} description="확인한 값 전체를 다음 단계의 입력값으로 사용해요.">
         <form noValidate onSubmit={event => {
@@ -75,7 +75,7 @@ export function DocumentReviewPage({ session, onChange, onReplace, onConfirm }: 
             <InputField ref={yearRef} label="적용 연도" inputMode="numeric" value={draft.year} onChange={event => update({ year: event.target.value })} error={errors.year} hint="문서에 적용되는 연도를 확인해 주세요." required />
           </div>
           <div className="review-confirm"><Checkbox ref={consentRef} label="원본과 입력 내용을 비교하고, 맞는지 확인했습니다." checked={session.confirmed} disabled={imageFailed} onChange={event => onChange({ ...session, confirmed: event.target.checked })} /><p>내용을 바꾸면 확인 동의가 초기화돼요. 수정 후 다시 확인해 주세요.</p></div>
-          <Button type="submit" className="review-submit" disabled={!ready}>수정 내용으로 점검 (체험)</Button><p className="review-submit-hint">실제 점검 요청은 전송하지 않아요. 확인한 입력값만 다음 화면에서 보여줘요.</p><div role="alert">{notice}</div>
+          <Button type="submit" className="review-submit" disabled={!ready}>{session.mode === 'sample' ? '수정 내용으로 점검 (체험)' : '확인한 내용으로 점검하기'}</Button><p className="review-submit-hint">{session.mode === 'sample' ? '실제 점검 요청은 전송하지 않아요. 확인한 입력값만 다음 화면에서 보여줘요.' : '확인한 입력값을 서버로 전송해 계산과 설명을 요청해요.'}</p><div role="alert">{notice}</div>
         </form>
       </Card>
     </div>

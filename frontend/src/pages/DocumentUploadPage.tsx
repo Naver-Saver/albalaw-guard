@@ -12,6 +12,8 @@ import { useObjectUrl } from '../features/document-upload/useObjectUrl'
 import { createPreviewBlob } from '../features/document-upload/previewBlob'
 import type { PreparedDocument } from '../features/document-review/model'
 import './upload.css'
+import { extractDocument } from '../features/document-review/client'
+import type { OcrResult } from '../features/document-review/model'
 
 const languages: { value: Language; code: string; label: string; subtitle: string }[] = [
   { value: 'ko', code: 'KO', label: '한국어', subtitle: 'Korean' },
@@ -20,7 +22,7 @@ const languages: { value: Language; code: string; label: string; subtitle: strin
   { value: 'zh-CN', code: 'ZH', label: '中文', subtitle: '중국어' },
 ]
 
-export function DocumentUploadPage({ onDocumentChange, onContinue, onSample }: { onDocumentChange?: (name: string | null) => void; onContinue?: (document: PreparedDocument) => void; onSample?: (language: Language) => void }) {
+export function DocumentUploadPage({ onDocumentChange, onContinue, onSample, live = false }: { onDocumentChange?: (name: string | null) => void; onContinue?: (document: PreparedDocument, ocr?: OcrResult) => void; onSample?: (language: Language) => void; live?: boolean }) {
   const [language, setLanguage] = useState<Language>('ko')
   const [docType, setDocType] = useState<DocumentType>('contract')
   const [file, setFile] = useState<File | null>(null)
@@ -85,13 +87,14 @@ export function DocumentUploadPage({ onDocumentChange, onContinue, onSample }: {
     requestRef.current = controller
     setStatus('loading')
     try {
-      await simulateExtraction(controller.signal)
+      if (live && docType !== 'contract') { setError('급여명세서 전용 점검은 아직 연결 준비 중이에요. 근로계약서를 선택해 주세요.'); setStatus('idle'); return }
+      const ocr = live ? await extractDocument({ file, kind, docType, language }, controller.signal) : (await simulateExtraction(controller.signal), undefined)
       if (requestRef.current === controller) {
         setStatus('done')
-        onContinue?.({ file, kind, docType, language })
+        onContinue?.({ file, kind, docType, language }, ocr)
       }
-    } catch {
-      if (!controller.signal.aborted && requestRef.current === controller) { setError('화면 체험을 마치지 못했어요. 다시 시도해 주세요.'); setStatus('idle') }
+    } catch (error) {
+      if (!controller.signal.aborted && requestRef.current === controller) { setError(error instanceof Error ? error.message : '요청에 실패했어요. 다시 시도해 주세요.'); setStatus('idle') }
     } finally {
       if (requestRef.current === controller) requestRef.current = null
     }
@@ -99,7 +102,7 @@ export function DocumentUploadPage({ onDocumentChange, onContinue, onSample }: {
 
   return <>
     <div className="upload-heading"><div><p className="eyebrow">MY FIRST WORK, MY RIGHTS</p><h1>한국어 계약서, 차근차근 확인해요</h1><p>익숙한 언어와 문서 종류를 고르고, 선명한 문서 사진을 준비해 주세요.</p></div><Badge>STEP 01 · 문서 준비</Badge></div>
-    <div className="upload-demo"><Icon name="info" /><p><strong>업로드 화면 미리보기</strong>선택한 파일은 이 기기에서만 확인하며 서버로 전송되지 않아요. 추출 버튼을 체험한 뒤 원본을 보며 직접 입력할 수 있어요. 실제 OCR는 아직 연결하지 않았어요.</p></div>
+    <div className="upload-demo"><Icon name="info" /><p><strong>{live ? '근로계약서 OCR 연결' : '업로드 화면 미리보기'}</strong>{live ? '동의 후 추출 버튼을 누르면 파일을 서버로 전송해 글자를 읽어요. 민감한 정보는 가린 사본을 권장해요. 파일 없는 샘플 체험은 전송하지 않아요.' : '선택한 파일은 이 기기에서만 확인하며 서버로 전송되지 않아요. 추출 버튼을 체험한 뒤 원본을 보며 직접 입력할 수 있어요. 실제 OCR는 아직 연결하지 않았어요.'}</p></div>
     <div className="upload-grid">
       <div className="upload-options">
         <Card title="안내받을 언어" description="편하게 이해할 수 있는 언어를 선택해요.">
@@ -123,10 +126,10 @@ export function DocumentUploadPage({ onDocumentChange, onContinue, onSample }: {
           {kind === 'image' && !previewUrl && <p className="upload-hint">미리보기를 준비하고 있어요.</p>}
           {kind === 'pdf' && <div className="pdf-preview"><Icon name="file" width="32" height="32" /><p>선택한 PDF 원본을 새 탭에서 확인할 수 있어요.</p>{previewUrl && <a className="button button--secondary" href={previewUrl} target="_blank" rel="noreferrer">PDF 미리보기 열기</a>}</div>}
         </section>}
-        <details className="upload-privacy"><summary>문서 처리 및 개인정보 안내</summary><p>현재 미리보기에서는 파일을 브라우저 메모리에만 두고, 서버로 전송하거나 별도로 저장하지 않아요. 원본 확인·수정 흐름 안에서만 파일을 이어서 보여주고, 새 문서로 교체하거나 서비스 소개로 나가면 파일 참조를 해제해요. 새 탭으로 연 PDF는 해당 탭을 직접 닫아 주세요.</p></details>
+        <details className="upload-privacy"><summary>문서 처리 및 개인정보 안내</summary><p>{live ? '추출 버튼을 누르면 선택한 파일을 백엔드와 OCR 서비스로 전송해 처리해요. 서버는 원본을 메모리에서 처리하며 별도 저장하지 않아요.' : '현재 미리보기에서는 파일을 브라우저 메모리에만 두고, 서버로 전송하거나 별도로 저장하지 않아요.'} 원본 확인·수정 흐름 안에서만 파일을 이어서 보여주고, 새 문서로 교체하거나 서비스 소개로 나가면 파일 참조를 해제해요. 새 탭으로 연 PDF는 해당 탭을 직접 닫아 주세요.</p></details>
         <Checkbox label="문서 처리 및 개인정보 안내를 확인했습니다." checked={consent} disabled={!file || imageFailed} onChange={event => { setConsent(event.target.checked); resetExtraction() }} />
-        <Button className="extract-button" onClick={handleExtract} disabled={!file || !consent || imageFailed} loading={loading}>{loading ? '처리 중 화면을 확인하고 있어요' : '문서 내용 추출하기 (체험)'}</Button>
-        <p className={`upload-progress ${status === 'done' ? 'upload-progress--done' : ''}`} role="status" aria-live="polite">{status === 'loading' ? '파일을 보내지 않고 처리 중 화면을 체험하고 있어요.' : status === 'done' ? '화면 체험을 마쳤어요. 실제 문서는 전송되거나 추출되지 않았어요.' : '파일 선택과 안내 동의를 마치면 체험 버튼을 사용할 수 있어요.'}</p>
+        <Button className="extract-button" onClick={handleExtract} disabled={!file || !consent || imageFailed} loading={loading}>{loading ? '문서 내용을 읽고 있어요' : live ? '문서 내용 추출하기' : '문서 내용 추출하기 (체험)'}</Button>
+        <p className={`upload-progress ${status === 'done' ? 'upload-progress--done' : ''}`} role="status" aria-live="polite">{status === 'loading' ? live ? '서버에서 문서를 읽고 있어요.' : '파일을 보내지 않고 처리 중 화면을 체험하고 있어요.' : status === 'done' ? live ? '문서 인식을 완료했어요.' : '화면 체험을 마쳤어요. 실제 문서는 전송되거나 추출되지 않았어요.' : '파일 선택과 안내 동의를 마치면 체험 버튼을 사용할 수 있어요.'}</p>
         {onSample && <Button variant="ghost" className="sample-start" onClick={() => onSample(language)}>파일 없이 샘플 문서로 체험하기</Button>}
       </Card>
     </div>

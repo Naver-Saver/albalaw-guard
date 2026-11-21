@@ -4,7 +4,7 @@ import { SAMPLE_OCR } from './sampleOcr'
 export const WEEKDAYS = ['월', '화', '수', '목', '금', '토', '일'] as const
 export type Weekday = typeof WEEKDAYS[number]
 export type PreparedDocument = { file: File; kind: DocumentKind; docType: DocumentType; language: Language }
-type ExtractedField<T> = { value: T | null; confidence: 'high' | 'low'; source_text?: string }
+type ExtractedField<T> = { value: T | null; confidence: 'high' | 'low'; source_text?: string | null }
 export type OcrResult = {
   doc_type: DocumentType
   raw_text: string
@@ -38,6 +38,18 @@ export function validateReviewDraft(draft: ReviewDraft): ReviewErrors {
   if (!/^\d{4}$/.test(draft.year.trim()) || Number(draft.year) < 1900) errors.year = '적용 연도를 네 자리 숫자로 입력해 주세요.'
   if (draft.work_days.some(day => !WEEKDAYS.includes(day)) || new Set(draft.work_days).size !== draft.work_days.length) errors.work_days = '근무요일을 중복 없이 선택해 주세요.'
   return errors
+}
+
+export function createOcrSession(document: PreparedDocument, ocr: OcrResult): ReviewSession {
+  const session = createReviewSession('manual', document)
+  const draft: ReviewDraft = {
+    ...session.draft,
+    hourly_wage: ocr.extracted.hourly_wage.value?.toString() ?? '',
+    weekly_hours: ocr.extracted.weekly_hours.value?.toString() ?? '',
+    work_days: (ocr.extracted.work_days.value ?? []).filter(day => WEEKDAYS.includes(day)),
+    break_minutes: ocr.extracted.break_minutes.value?.toString() ?? '',
+  }
+  return { ...session, ocr, draft, initialDraft: structuredClone(draft) }
 }
 
 export function editReviewSession(session: ReviewSession, draft: ReviewDraft): ReviewSession {
